@@ -16,14 +16,14 @@ from util import *
 criterion = nn.MSELoss()
 
 class DDPG(object):
-    def __init__(self, nb_states, nb_actions, args, continuous):
+    def __init__(self, nb_states, nb_actions, args, discrete):
         
         if args.seed > 0:
             self.seed(args.seed)
 
         self.nb_states = nb_states
         self.nb_actions = nb_actions
-        self.continuous = continuous
+        self.discrete = discrete
         
         # Create Actor and Critic Network
         net_cfg = {
@@ -123,7 +123,7 @@ class DDPG(object):
     def random_action(self):
         action = np.random.uniform(-1.,1.,self.nb_actions)
         self.a_t = action
-        if self.continuous:
+        if self.discrete:
             return action.argmax()
         else:
             return action
@@ -141,7 +141,7 @@ class DDPG(object):
         self.a_t = action
         if return_fix:
             return action
-        if self.continuous:
+        if self.discrete:
             return action.argmax()
         else:
             return action

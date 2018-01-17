@@ -9,8 +9,9 @@ import pybullet
 import pybullet_envs
 from baselines import deepq
 
-from normalized_env import NormalizedEnv
+# from normalized_env import NormalizedEnv
 from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
+from pybullet_envs.bullet.kukaCamGymEnv import KukaCamGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
@@ -48,7 +49,7 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
         # print("action = ", action)
         observation2, reward, done, info = env.step(action)
 
-        # print("observation = ", observation2)
+        # print("observation = ", np.shape(observation2))
         # print("reward = ", reward)
         # exit()
         observation2 = deepcopy(observation2)
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument('--traintimes', default=50, type=int, help='train times for each episode')
     parser.add_argument('--resume', default='default', type=str, help='Resuming model path for testing')
     parser.add_argument('--vis', action='store_true')
-    parser.add_argument('--continuous', dest='continuous', action='store_true')
+    parser.add_argument('--discrete', dest='discrete', action='store_true')
     # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
     # parser.add_argument('--cuda', dest='cuda', action='store_true') # TODO
 
@@ -160,9 +161,10 @@ if __name__ == "__main__":
 
 # pybullet
 
-    env = gym.make('CartPole-v0')
-    env = env.unwrapped
-#    env = RacecarGymEnv(renders=True, isDiscrete=True)
+    # env = gym.make('CartPole-v0')
+    # env = env.unwrapped
+#    env = KukaCamGymEnv(renders=False, isDiscrete=True)
+    env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
     # print(act)
@@ -179,12 +181,12 @@ if __name__ == "__main__":
 
     # input states count & actions count
     nb_states = env.observation_space.shape[0]
-    if args.continuous:
+    if args.discrete:
         nb_actions = env.action_space.n
     else:
         nb_actions = env.action_space.shape[0]
 
-    agent = DDPG(nb_states, nb_actions, args, args.continuous)
+    agent = DDPG(nb_states, nb_actions, args, args.discrete)
     evaluate = Evaluator(args.validate_episodes, 
         args.validate_steps, args.output, max_episode_length=args.max_episode_length)
 
