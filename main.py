@@ -171,15 +171,11 @@ if __name__ == "__main__":
         env = NormalizedEnv(gym.make(args.env))
 
     # env = KukaCamGymEnv(renders=False, isDiscrete=True)
-#    env = RacecarGymEnv(renders=True, isDiscrete=True)
+    # env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
     # print(act)
     # exit()
-# zyh
-    # env = NormalizedEnv(gym.make(args.env))
-#    if args.vis == True:
-#        env.render()
 
     # input random seed
     if args.seed > 0:
