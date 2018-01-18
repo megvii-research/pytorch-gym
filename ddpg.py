@@ -74,7 +74,7 @@ class DDPG(object):
         next_q_values.volatile = False
 
         target_q_batch = to_tensor(reward_batch) + \
-            self.discount*to_tensor(terminal_batch.astype(np.float))*next_q_values
+            self.discount * to_tensor(terminal_batch.astype(np.float)) * next_q_values
 
         # Critic update
         self.critic.zero_grad()
@@ -101,7 +101,7 @@ class DDPG(object):
         soft_update(self.actor_target, self.actor, self.tau)
         soft_update(self.critic_target, self.critic, self.tau)
 
-        return value_loss, policy_loss
+        return target_q_batch.mean(), value_loss, policy_loss
 
     def eval(self):
         self.actor.eval()

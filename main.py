@@ -62,7 +62,8 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
         # agent observe and update policy
         agent.observe(reward, observation2, done)
         if step > args.warmup:
-            value_loss, policy_loss = agent.update_policy()
+            Q, value_loss, policy_loss = agent.update_policy()
+            writer.add_scalar('data/Q', Q, log)
             writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
             writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
             log += 1
@@ -90,7 +91,7 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
         if done: # end of episode
             for i in range(traintimes):
                 if step > args.warmup :
-                    value_loss, policy_loss = agent.update_policy()
+                    Q, value_loss, policy_loss = agent.update_policy()
                     writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
                     log += 1
