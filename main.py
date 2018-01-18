@@ -9,13 +9,15 @@ import pybullet
 import pybullet_envs
 from baselines import deepq
 
-# from normalized_env import NormalizedEnv
+from normalized_env import NormalizedEnv
 from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
 from pybullet_envs.bullet.kukaCamGymEnv import KukaCamGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
 from tensorboardX import SummaryWriter
+
+from llll import Subprocess
 
 gym.undo_logger_setup()
 
@@ -49,7 +51,8 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
         # print("action = ", action)
         observation2, reward, done, info = env.step(action)
 
-        # print("observation = ", np.shape(observation2))
+        # print("observation shape = ", np.shape(observation2))
+        # print("observation = ", observation2)
         # print("reward = ", reward)
         # exit()
         observation2 = deepcopy(observation2)
@@ -161,16 +164,20 @@ if __name__ == "__main__":
 
 # pybullet
 
-    # env = gym.make('CartPole-v0')
-    # env = env.unwrapped
-#    env = KukaCamGymEnv(renders=False, isDiscrete=True)
-    env = RacecarGymEnv(renders=True, isDiscrete=True)
+    if args.discrete:
+        env = gym.make(args.env)
+        env = env.unwrapped
+    else:
+        env = NormalizedEnv(gym.make(args.env))
+
+    # env = KukaCamGymEnv(renders=False, isDiscrete=True)
+#    env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
     # print(act)
     # exit()
 # zyh
-#    env = NormalizedEnv(gym.make(args.env))
+    # env = NormalizedEnv(gym.make(args.env))
 #    if args.vis == True:
 #        env.render()
 
