@@ -23,9 +23,12 @@ gym.undo_logger_setup()
 
 writer = SummaryWriter()
 
-def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_episode_length=None,
-          debug=False, visualize=False, traintimes=None):
-
+def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episode_length=None,
+          debug=False, visualize=False, traintimes=None, resume=None):
+    if resume != None:
+        print('load weight')
+        agent.load_weights(output)
+    
     log = 0
     agent.is_training = True
     step = episode = episode_steps = 0
@@ -39,7 +42,7 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
             agent.reset(observation)
 
         # agent pick action ...
-        if step <= args.warmup:
+        if step <= args.warmup and resume == None:
             action = agent.random_action()
         else:
             action = agent.select_action(observation)
@@ -50,7 +53,7 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
 
         # print("action = ", action)
         observation2, reward, done, info = env.step(action)
-
+        
         # print("observation shape = ", np.shape(observation2))
         # print("observation = ", observation2)
         # print("reward = ", reward)
@@ -90,18 +93,18 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
 
         if done: # end of episode
             for i in range(traintimes):
-                if step > args.warmup :
+                if step > args.warmup:
                     Q, value_loss, policy_loss = agent.update_policy()
                     writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
                     log += 1
             if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode,episode_reward,step))
             writer.add_scalar('data/reward', episode_reward, log)
-            agent.memory.append(
-                observation,
-                agent.select_action(observation, return_fix=True),
-                0., False
-            )
+#            agent.memory.append(
+#                observation,
+#                agent.select_action(observation, return_fix=True),
+#                0., False
+#            )
 
             # reset
             observation = None
@@ -111,6 +114,8 @@ def train(num_iterations, gent, env,  evaluate, validate_steps, output, max_epis
 
 def test(num_episodes, agent, env, evaluate, model_path, visualize=True, debug=False):
 
+    if model_path == None:
+        model_path = 'output/{}-run1'.format(args.env)
     agent.load_weights(model_path)
     agent.is_training = False
     agent.eval()
@@ -126,32 +131,32 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
 
     # arguments represent
-    parser.add_argument('--mode', default='train', type=str, help='support option: train/test')
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=200, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=500, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.99, type=float, help='')
+    parser.add_argument('--discount', default=0.97, type=float, help='')
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--ou_theta', default=0.2, type=float, help='noise theta')
     parser.add_argument('--ou_sigma', default=0.2, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
     parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
     parser.add_argument('--max_episode_length', default=500, type=int, help='')
     parser.add_argument('--validate_steps', default=2000, type=int, help='how many steps to perform a validate experiment')
-    parser.add_argument('--output', default='output', type=str, help='')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.003, type=float, help='') 
     parser.add_argument('--train_iter', default=200000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=50000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--seed', default=-1, type=int, help='')
     parser.add_argument('--traintimes', default=50, type=int, help='train times for each episode')
-    parser.add_argument('--resume', default='default', type=str, help='Resuming model path for testing')
+    parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
+    parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
+    parser.add_argument('--test', action='store_true')
     parser.add_argument('--vis', action='store_true')
     parser.add_argument('--discrete', dest='discrete', action='store_true')
     # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
@@ -159,9 +164,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     # StrCat args.output with args.env
-    args.output = get_output_folder(args.output, args.env)
-    if args.resume == 'default':
-        args.resume = 'output/{}-run0'.format(args.env)
+    if args.resume == None:
+        args.output = get_output_folder(args.output, args.env)
+    else:
+        args.output = args.resume
 
 # pybullet
 
@@ -192,16 +198,13 @@ if __name__ == "__main__":
 
     agent = DDPG(nb_states, nb_actions, args, args.discrete)
     evaluate = Evaluator(args.validate_episodes, 
-        args.validate_steps, args.output, max_episode_length=args.max_episode_length)
+        args.validate_steps, max_episode_length=args.max_episode_length)
 
-    if args.mode == 'train':
+    if args.test == False:
         train(args.train_iter, agent, env, evaluate, 
               args.validate_steps, args.output, max_episode_length=args.max_episode_length,
-              debug=args.debug, visualize=args.vis, traintimes=args.traintimes)
-
-    elif args.mode == 'test':
-        test(args.validate_episodes, agent, env, evaluate, args.resume,
-            visualize=True, debug=args.debug)
+              debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
 
     else:
-        raise RuntimeError('undefined mode {}'.format(args.mode))
+        test(args.validate_episodes, agent, env, evaluate, args.resume,
+             visualize=True, debug=args.debug)

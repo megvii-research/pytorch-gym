@@ -61,7 +61,7 @@ class DDPG(object):
         # 
         if USE_CUDA: self.cuda()
         
-    def update_policy(self):
+    def update_policy(self, train_actor = True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
         next_state_batch, terminal_batch = self.memory.sample_and_split(self.batch_size)
@@ -85,7 +85,6 @@ class DDPG(object):
         value_loss.backward()
         self.critic_optim.step()
 
-        # Actor update
         self.actor.zero_grad()
 
         policy_loss = -self.critic([
@@ -95,7 +94,8 @@ class DDPG(object):
 
         policy_loss = policy_loss.mean()
         policy_loss.backward()
-        self.actor_optim.step()
+        if train_actor == True:
+            self.actor_optim.step()
 
         # Target update
         soft_update(self.actor_target, self.actor, self.tau)
@@ -132,6 +132,7 @@ class DDPG(object):
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
+#        print(self.random_process.sample(), action)
         action += self.is_training*max(self.epsilon, 0)*self.random_process.sample()
         action = np.clip(action, -1., 1.)
 
