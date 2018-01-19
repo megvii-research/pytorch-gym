@@ -108,6 +108,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
             episode_steps = 0
             episode_reward = 0.
             episode += 1
+    sigint_handler(0, 0)
 
 def test(num_episodes, agent, env, evaluate, model_path, visualize=True, debug=False):
 
@@ -128,7 +129,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
 
     # arguments represent
-    parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
+    parser.add_argument('--env', default='KuKa-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=200, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
@@ -168,13 +169,13 @@ if __name__ == "__main__":
 
 # pybullet
 
-    if args.discrete:
-        env = gym.make(args.env)
-        env = env.unwrapped
-    else:
-        env = NormalizedEnv(gym.make(args.env))
+    # if args.discrete:
+    #    env = gym.make(args.env)
+    #    env = env.unwrapped
+    # else:
+    #    env = NormalizedEnv(gym.make(args.env))
 
-    # env = KukaGymEnv(renders=False, isDiscrete=True)
+    env = KukaGymEnv(renders=False, isDiscrete=True)
     # env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
