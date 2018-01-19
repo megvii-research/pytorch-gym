@@ -57,10 +57,8 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
         # print("observation shape = ", np.shape(observation2))
         # print("observation = ", observation2)
         # print("reward = ", reward)
-        # exit()
+        # exit()        
         observation2 = deepcopy(observation2)
-        if max_episode_length and episode_steps >= max_episode_length -1:
-            done = True
 
         # agent observe and update policy
         agent.observe(reward, observation2, done)
@@ -75,17 +73,13 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
             if debug: prYellow('save')
             agent.save_model(output)
 
-        # [optional] save intermideate model
-        # if step % int(num_iterations/3) == 0:
-        #     agent.save_model(output)
-
         # update 
         step += 1
         episode_steps += 1
         episode_reward += reward
         observation = deepcopy(observation2)
 
-        if done: # end of episode
+        if done or (episode_steps >= max_episode_length - 1 and max_episode_length): # end of episode
             for i in range(traintimes):
                 log += 1
                 if step > args.warmup:
@@ -95,11 +89,6 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
             if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode,episode_reward,step))
             writer.add_scalar('data/reward', episode_reward, log)
-#            agent.memory.append(
-#                observation,
-#                agent.select_action(observation, return_fix=True),
-#                0., False
-#            )
 
             # reset
             observation = None
@@ -132,7 +121,7 @@ if __name__ == "__main__":
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=500, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.9, type=float, help='')
+    parser.add_argument('--discount', default=0.97, type=float, help='')
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
@@ -141,7 +130,7 @@ if __name__ == "__main__":
     parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
     parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
-    parser.add_argument('--max_episode_length', default=500, type=int, help='')
+    parser.add_argument('--max_episode_length', default=0, type=int, help='')
     parser.add_argument('--validate_steps', default=2000, type=int, help='how many steps to perform a validate experiment')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.003, type=float, help='') 
