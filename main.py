@@ -16,6 +16,7 @@ from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
 from tensorboardX import SummaryWriter
+from observation_processor import *
 
 from llll import Subprocess
 
@@ -23,7 +24,7 @@ gym.undo_logger_setup()
 
 writer = SummaryWriter()
 
-def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episode_length=None,
+def train(num_iterations, agent, env, evaluate, validate_steps, output, window_length, max_episode_length=None,
           debug=False, visualize=False, traintimes=None, resume=None):
     if resume != None:
         print('load weight')
@@ -35,10 +36,13 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
     episode_reward = 0.
     observation = None
     max_reward = -100000.
+    episode_memory = queue()
     while step < num_iterations:
         # reset if it is the start of episode
         if observation is None:
-            observation = deepcopy(env.reset())
+            observation = env.reset()
+            episode_memory.append(observation)
+            observation = episode_memory.getObservation(window_length, observation)
             agent.reset(observation)
 
         # agent pick action ...
@@ -53,13 +57,13 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
 
         # print("action = ", action)
         observation2, reward, done, info = env.step(action)
+        episode_memory.append(observation2)
+        observation2 = episode_memory.getObservation(window_length, observation2)
         
         # print("observation shape = ", np.shape(observation2))
         # print("observation = ", observation2)
         # print("reward = ", reward)
-        # exit()        
-        observation2 = deepcopy(observation2)
-
+        # exit()       
         # agent observe and update policy
         agent.observe(reward, observation2, done)
 
@@ -186,7 +190,7 @@ if __name__ == "__main__":
 
     if args.test == False:
         train(args.train_iter, agent, env, evaluate, 
-              args.validate_steps, args.output, max_episode_length=args.max_episode_length,
+              args.validate_steps, args.output, args.window_length, max_episode_length=args.max_episode_length,
               debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
 
     else:
