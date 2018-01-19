@@ -6,7 +6,7 @@ import torch.nn as nn
 from torch.optim import Adam
 
 from model import (Actor, Critic)
-from memory import SequentialMemory
+from rpm import rpm
 from random_process import OrnsteinUhlenbeckProcess
 
 from util import *
@@ -31,19 +31,19 @@ class DDPG(object):
             'hidden2':args.hidden2, 
             'init_w':args.init_w
         }
-        self.actor = Actor(self.nb_states, self.nb_actions, **net_cfg)
-        self.actor_target = Actor(self.nb_states, self.nb_actions, **net_cfg)
+        self.actor = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
+        self.actor_target = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
 
-        self.critic = Critic(self.nb_states, self.nb_actions, **net_cfg)
-        self.critic_target = Critic(self.nb_states, self.nb_actions, **net_cfg)
+        self.critic = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
+        self.critic_target = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
         
         #Create replay buffer
-        self.memory = SequentialMemory(limit=args.rmsize, window_length=args.window_length)
+        self.memory = rpm(args.rmsize) # SequentialMemory(limit=args.rmsize, window_length=args.window_length)
         self.random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=args.ou_theta, mu=args.ou_mu, sigma=args.ou_sigma)
 
         # Hyper-parameters
@@ -64,7 +64,10 @@ class DDPG(object):
     def update_policy(self, train_actor = True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
-        next_state_batch, terminal_batch = self.memory.sample_and_split(self.batch_size)
+            next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
+
+        # state_batch, action_batch, reward_batch, \
+        # next_state_batch, terminal_batch = self.memory.sample_and_split(self.batch_size)
 
         # Prepare for the target q batch
         next_q_values = self.critic_target([
@@ -74,7 +77,7 @@ class DDPG(object):
         next_q_values.volatile = False
 
         target_q_batch = to_tensor(reward_batch) + \
-            self.discount * to_tensor(terminal_batch.astype(np.float)) * next_q_values
+            self.discount * to_tensor((1 - terminal_batch.astype(np.float))) * next_q_values
 
         # Critic update
         self.critic.zero_grad()
@@ -117,7 +120,7 @@ class DDPG(object):
 
     def observe(self, r_t, s_t1, done):
         if self.is_training:
-            self.memory.append(self.s_t, self.a_t, r_t, done)
+            self.memory.append([self.s_t, self.a_t, r_t, s_t1, done])
             self.s_t = s_t1
 
     def random_action(self):
@@ -132,8 +135,8 @@ class DDPG(object):
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
-#        print(self.random_process.sample(), action)
-        action += self.is_training*max(self.epsilon, 0)*self.random_process.sample()
+        # print(self.random_process.sample(), action)
+        action += self.is_training * max(self.epsilon, 0) * self.random_process.sample()
         action = np.clip(action, -1., 1.)
 
         if decay_epsilon:
