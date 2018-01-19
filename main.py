@@ -46,7 +46,7 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
             action = agent.random_action()
         else:
             action = agent.select_action(observation)
-        if visualize == True:
+        if visualize == True and step > args.warmup:
             env.render()
             
         # env response with next_observation, reward, terminate_info
@@ -64,12 +64,6 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
 
         # agent observe and update policy
         agent.observe(reward, observation2, done)
-        if step > args.warmup:
-            Q, value_loss, policy_loss = agent.update_policy()
-            writer.add_scalar('data/Q', Q, log)
-            writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
-            writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
-            log += 1
 
         # [optional] evaluate
         if evaluate is not None and validate_steps > 0 and step % validate_steps == 0:
@@ -93,11 +87,12 @@ def train(num_iterations, gent, env, evaluate, validate_steps, output, max_episo
 
         if done: # end of episode
             for i in range(traintimes):
+                log += 1
                 if step > args.warmup:
                     Q, value_loss, policy_loss = agent.update_policy()
+                    writer.add_scalar('data/Q', Q, log)
                     writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
-                    log += 1
             if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode,episode_reward,step))
             writer.add_scalar('data/reward', episode_reward, log)
 #            agent.memory.append(
@@ -137,13 +132,13 @@ if __name__ == "__main__":
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=500, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.97, type=float, help='')
+    parser.add_argument('--discount', default=0.9, type=float, help='')
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
-    parser.add_argument('--ou_theta', default=0.2, type=float, help='noise theta')
-    parser.add_argument('--ou_sigma', default=0.2, type=float, help='noise sigma')
+    parser.add_argument('--tau', default=0.02, type=float, help='moving average for target network')
+    parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
+    parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
     parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
     parser.add_argument('--max_episode_length', default=500, type=int, help='')
@@ -153,7 +148,7 @@ if __name__ == "__main__":
     parser.add_argument('--train_iter', default=200000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=50000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--seed', default=-1, type=int, help='')
-    parser.add_argument('--traintimes', default=50, type=int, help='train times for each episode')
+    parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
     parser.add_argument('--test', action='store_true')
