@@ -11,13 +11,14 @@ from baselines import deepq
 
 from normalized_env import NormalizedEnv
 from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
-from pybullet_envs.bullet.kukaCamGymEnv import KukaCamGymEnv
+from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import *
 
+import signal
 from llll import Subprocess
 
 gym.undo_logger_setup()
@@ -29,6 +30,14 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
     if resume != None:
         print('load weight')
         agent.load_weights(output)
+        agent.memory.load(output)
+
+    def sigint_handler(signum, frame):
+        print('memory saving...'),
+        agent.memory.save(output)
+        print('done')
+        exit()
+    signal.signal(signal.SIGINT, sigint_handler)
     
     log = 0
     agent.is_training = True
@@ -88,7 +97,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
                 log += 1
                 if step > args.warmup:
                     Q, value_loss, policy_loss = agent.update_policy()
-                    writer.add_scalar('data/Q', Q, log)
+                    writer.add_scalar('data/Q', Q.data.numpy(), log)
                     writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
             if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode,episode_reward,step))
@@ -125,11 +134,11 @@ if __name__ == "__main__":
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=500, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.97, type=float, help='')
+    parser.add_argument('--discount', default=0.99, type=float, help='')
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.02, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.002, type=float, help='moving average for target network')
     parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
     parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
@@ -165,7 +174,7 @@ if __name__ == "__main__":
     else:
         env = NormalizedEnv(gym.make(args.env))
 
-    # env = KukaCamGymEnv(renders=False, isDiscrete=True)
+    # env = KukaGymEnv(renders=False, isDiscrete=True)
     # env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
