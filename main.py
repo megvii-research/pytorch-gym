@@ -5,13 +5,14 @@ import argparse
 from copy import deepcopy
 import torch
 import gym
-import pybullet
-import pybullet_envs
+import signal
+# import pybullet
+# import pybullet_envs
 from baselines import deepq
 
 from normalized_env import NormalizedEnv
-from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
-from pybullet_envs.bullet.kukaCamGymEnv import KukaCamGymEnv
+# from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
+# from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
@@ -23,6 +24,8 @@ from llll import Subprocess
 
 gym.undo_logger_setup()
 
+import time
+
 writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, validate_steps, output, window_length, max_episode_length=None,
@@ -30,7 +33,16 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
     if resume != None:
         print('load weight')
         agent.load_weights(output)
-    
+        agent.memory.load(output)
+
+    def sigint_handler(signum, frame):
+        print('memory saving...'),
+        agent.memory.save(output)
+        print('done')
+        exit()
+    signal.signal(signal.SIGINT, sigint_handler)
+
+    time_stamp = 0.
     log = 0
     agent.is_training = True
     step = episode = episode_steps = 0
@@ -85,16 +97,20 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
         observation = deepcopy(observation2)
 
         if done or (episode_steps >= max_episode_length - 1 and max_episode_length): # end of episode
+            train_time_interval = time.time() - time_stamp
+            time_stamp = time.time()
             for i in range(traintimes):
                 log += 1
                 if step > args.warmup:
                     Q, value_loss, policy_loss = agent.update_policy()
-                    writer.add_scalar('data/Q', Q, log)
-                    writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
-                    writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
-            if debug: prGreen('#{}: episode_reward:{} steps:{} noise:{}'.format(episode,episode_reward,step,noise_level))
-            writer.add_scalar('data/reward', episode_reward, episode_num)
-
+                    writer.add_scalar('data/Q', Q.data.cpu().numpy(), log)
+                    writer.add_scalar('data/critic_loss', value_loss.data.cpu().numpy(), log)
+                    writer.add_scalar('data/actor_loss', policy_loss.data.cpu().numpy(), log)
+            if debug: prGreen('#{}: episode_reward:{} steps:{} inttime:{} time:{}' \
+                              .format(episode,episode_reward,step,train_time_interval,time.time()-time_stamp))
+            time_stamp = time.time()
+            writer.add_scalar('data/reward', episode_reward, log)
+            
             # reset
             noise_level = np.random.uniform()
             episode_num += 1
