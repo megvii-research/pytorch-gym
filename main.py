@@ -11,14 +11,14 @@ from baselines import deepq
 
 from normalized_env import NormalizedEnv
 from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
-from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
+from pybullet_envs.bullet.kukaCamGymEnv import KukaCamGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
 from tensorboardX import SummaryWriter
-from observation_processor import *
+from observation_processor import queue
+from multi import fastenv
 
-import signal
 from llll import Subprocess
 
 gym.undo_logger_setup()
@@ -30,14 +30,6 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
     if resume != None:
         print('load weight')
         agent.load_weights(output)
-        agent.memory.load(output)
-
-    def sigint_handler(signum, frame):
-        print('memory saving...'),
-        agent.memory.save(output)
-        print('done')
-        exit()
-    signal.signal(signal.SIGINT, sigint_handler)
     
     log = 0
     agent.is_training = True
@@ -45,7 +37,9 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
     episode_reward = 0.
     observation = None
     max_reward = -100000.
+    episode_num = 0
     episode_memory = queue()
+    noise_level = np.random.uniform()
     while step < num_iterations:
         # reset if it is the start of episode
         if observation is None:
@@ -58,9 +52,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
         if step <= args.warmup and resume == None:
             action = agent.random_action()
         else:
-            action = agent.select_action(observation)
-        if visualize == True and step > args.warmup:
-            env.render()
+            action = agent.select_action(observation, noise_level = noise_level)
             
         # env response with next_observation, reward, terminate_info
 
@@ -97,21 +89,21 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
                 log += 1
                 if step > args.warmup:
                     Q, value_loss, policy_loss = agent.update_policy()
-                    writer.add_scalar('data/Q', Q.data.numpy(), log)
+                    writer.add_scalar('data/Q', Q, log)
                     writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
                     writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
-            if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode,episode_reward,step))
-            writer.add_scalar('data/reward', episode_reward, log)
+            if debug: prGreen('#{}: episode_reward:{} steps:{} noise:{}'.format(episode,episode_reward,step,noise_level))
+            writer.add_scalar('data/reward', episode_reward, episode_num)
 
             # reset
+            noise_level = np.random.uniform()
+            episode_num += 1
             observation = None
             episode_steps = 0
             episode_reward = 0.
             episode += 1
 
-    sigint_handler(0, 0)
-
-def test(num_episodes, agent, env, evaluate, model_path, visualize=True, debug=False):
+def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False):
 
     if model_path == None:
         model_path = 'output/{}-run1'.format(args.env)
@@ -121,7 +113,7 @@ def test(num_episodes, agent, env, evaluate, model_path, visualize=True, debug=F
     policy = lambda x: agent.select_action(x, decay_epsilon=False)
 
     for i in range(num_episodes):
-        validate_reward = evaluate(env, policy, debug=debug, visualize=visualize, save=False)
+        validate_reward = evaluate(env, policy, window_length, debug=debug, visualize=visualize, save=False)
         if debug: prYellow('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
 
 
@@ -130,29 +122,30 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
 
     # arguments represent
-    parser.add_argument('--env', default='KuKa-v0', type=str, help='open-ai gym environment')
-    parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
-    parser.add_argument('--hidden2', default=200, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
-    parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
+    parser.add_argument('--hidden1', default=600, type=int, help='hidden num of first fully connect layer')
+    parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
+    parser.add_argument('--rate', default=3e-4, type=float, help='learning rate')
+    parser.add_argument('--prate', default=3e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=500, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.99, type=float, help='')
+    parser.add_argument('--discount', default=0.98, type=float, help='')
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.002, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
     parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
     parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
     parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_steps', default=2000, type=int, help='how many steps to perform a validate experiment')
+    parser.add_argument('--validate_steps', default=10000, type=int, help='how many steps to perform a validate experiment')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.003, type=float, help='') 
-    parser.add_argument('--train_iter', default=1000000, type=int, help='train iters each timestep')
-    parser.add_argument('--epsilon', default=50000, type=int, help='linear decay of exploration policy')
+    parser.add_argument('--train_iter', default=10000000, type=int, help='train iters each timestep')
+    parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--seed', default=-1, type=int, help='')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
+    parser.add_argument('--action_repeat', default=1, type=int, help='repeat times for each action')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
     parser.add_argument('--test', action='store_true')
@@ -170,13 +163,13 @@ if __name__ == "__main__":
 
 # pybullet
 
-    # if args.discrete:
-    #    env = gym.make(args.env)
-    #    env = env.unwrapped
-    # else:
-    #    env = NormalizedEnv(gym.make(args.env))
+    if args.discrete:
+        env = gym.make(args.env)
+        env = env.unwrapped
+    else:
+        env = NormalizedEnv(gym.make(args.env))
 
-    env = KukaGymEnv(renders=False, isDiscrete=True)
+    # env = KukaCamGymEnv(renders=False, isDiscrete=True)
     # env = RacecarGymEnv(renders=True, isDiscrete=True)
     # print("-----------")
     # act = deepq.load("racecar_model.pkl")
@@ -189,21 +182,26 @@ if __name__ == "__main__":
         env.seed(args.seed)
 
     # input states count & actions count
+    print(env.observation_space.shape, env.action_space.shape)
     nb_states = env.observation_space.shape[0]
     if args.discrete:
         nb_actions = env.action_space.n
     else:
         nb_actions = env.action_space.shape[0]
 
+    env = fastenv(env, args.action_repeat, args.vis)
     agent = DDPG(nb_states, nb_actions, args, args.discrete)
     evaluate = Evaluator(args.validate_episodes, 
         args.validate_steps, max_episode_length=args.max_episode_length)
 
+    if args.vis == True and args.env == 'HalfCheetahBulletEnv-v0':
+        env.render()
+    
     if args.test == False:
         train(args.train_iter, agent, env, evaluate, 
               args.validate_steps, args.output, args.window_length, max_episode_length=args.max_episode_length,
               debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
 
     else:
-        test(args.validate_episodes, agent, env, evaluate, args.resume,
+        test(args.validate_episodes, agent, env, evaluate, args.resume, args.window_length, 
              visualize=True, debug=args.debug)
