@@ -33,11 +33,11 @@ class DDPG(object):
         }
         self.actor = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
+        self.actor_optim = Adam(self.actor.parameters(), lr=args.prate)
 
         self.critic = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.critic_target = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
+        self.critic_optim = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
@@ -156,6 +156,8 @@ class DDPG(object):
 
     def load_weights(self, output):
         if output is None: return
+
+        print('output=', output)
 
         self.actor.load_state_dict(
             torch.load('{}/actor.pkl'.format(output))

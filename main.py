@@ -108,6 +108,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
             episode_steps = 0
             episode_reward = 0.
             episode += 1
+
     sigint_handler(0, 0)
 
 def test(num_episodes, agent, env, evaluate, model_path, visualize=True, debug=False):
@@ -148,7 +149,7 @@ if __name__ == "__main__":
     parser.add_argument('--validate_steps', default=2000, type=int, help='how many steps to perform a validate experiment')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.003, type=float, help='') 
-    parser.add_argument('--train_iter', default=200000, type=int, help='train iters each timestep')
+    parser.add_argument('--train_iter', default=1000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=50000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--seed', default=-1, type=int, help='')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
