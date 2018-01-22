@@ -47,3 +47,13 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
 
     def reset_states(self):
         self.x_prev = self.x0 if self.x0 is not None else np.zeros(self.size)
+
+class Myrandom():
+    def __init__(self, size):
+        self.size = size
+        
+    def sample(self):
+        return np.random.normal(size=self.size)
+
+    def reset_states(self):
+        pass
