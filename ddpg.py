@@ -15,7 +15,7 @@ from util import *
 criterion = nn.MSELoss()
 
 class DDPG(object):
-    def __init__(self, nb_states, nb_actions, args, discrete, USE_CUDA = 1):
+    def __init__(self, nb_states, nb_actions, args, discrete, use_cuda=False):
         
         if args.seed > 0:
             self.seed(args.seed)
@@ -56,9 +56,9 @@ class DDPG(object):
         self.s_t = None # Most recent state
         self.a_t = None # Most recent action
         self.is_training = True
-
+        self.use_cuda = use_cuda
         # 
-        if USE_CUDA: self.cuda()
+        if self.use_cuda: self.cuda()
         
     def update_policy(self, train_actor = True):
         # Sample batch
@@ -169,7 +169,7 @@ class DDPG(object):
         )
 
 
-    def save_model(self,output):
+    def save_model(self, output):
         self.actor.cpu()
         torch.save(
             self.actor.state_dict(),
@@ -179,9 +179,9 @@ class DDPG(object):
             self.critic.state_dict(),
             '{}/critic.pkl'.format(output)
         )
-        self.actor.cuda()
+        if self.use_cuda: self.actor.cuda()
 
     def seed(self,s):
         torch.manual_seed(s)
-        if USE_CUDA:
+        if self.use_cuda:
             torch.cuda.manual_seed(s)

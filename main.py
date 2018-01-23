@@ -30,7 +30,7 @@ writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, validate_steps, output, window_length, max_episode_length=None,
           debug=False, visualize=False, traintimes=None, resume=None):
-    if resume != None:
+    if resume is not None:
         print('load weight')
         agent.load_weights(output)
         agent.memory.load(output)
@@ -61,7 +61,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
             agent.reset(observation)
 
         # agent pick action ...
-        if step <= args.warmup and resume == None:
+        if step <= args.warmup and resume is None:
             action = agent.random_action()
         else:
             action = agent.select_action(observation, noise_level = noise_level)
@@ -120,7 +120,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
 
 def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False):
 
-    if model_path == None:
+    if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
     agent.load_weights(model_path)
     agent.is_training = False
@@ -167,11 +167,11 @@ if __name__ == "__main__":
     parser.add_argument('--vis', action='store_true')
     parser.add_argument('--discrete', dest='discrete', action='store_true')
     # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
-    # parser.add_argument('--cuda', dest='cuda', action='store_true') # TODO
+    parser.add_argument('--cuda', dest='cuda', action='store_true')
 
     args = parser.parse_args()
     # StrCat args.output with args.env
-    if args.resume == None:
+    if args.resume is None:
         args.output = get_output_folder(args.output, args.env)
     else:
         args.output = args.resume
@@ -198,14 +198,14 @@ if __name__ == "__main__":
         nb_actions = env.action_space.shape[0]
 
     env = fastenv(env, args.action_repeat, args.vis)
-    agent = DDPG(nb_states, nb_actions, args, args.discrete)
+    agent = DDPG(nb_states, nb_actions, args, args.discrete, args.cuda)
     evaluate = Evaluator(args.validate_episodes, 
         args.validate_steps, max_episode_length=args.max_episode_length)
 
-    if args.vis == True and args.env == 'HalfCheetahBulletEnv-v0':
+    if args.vis and args.env == 'HalfCheetahBulletEnv-v0':
         env.render()
     
-    if args.test == False:
+    if args.test is False:
         train(args.train_iter, agent, env, evaluate, 
               args.validate_steps, args.output, args.window_length, max_episode_length=args.max_episode_length,
               debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
