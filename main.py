@@ -8,8 +8,6 @@ import gym
 import signal
 import pybullet
 import pybullet_envs
-from baselines import deepq
-
 from normalized_env import NormalizedEnv
 from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
 from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv

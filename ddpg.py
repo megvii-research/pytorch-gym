@@ -10,8 +10,6 @@ from random_process import *
 
 from util import *
 
-# from ipdb import set_trace as debug
-
 criterion = nn.MSELoss()
 
 class DDPG(object):
@@ -43,7 +41,7 @@ class DDPG(object):
         
         #Create replay buffer
         self.memory = rpm(args.rmsize) # SequentialMemory(limit=args.rmsize, window_length=args.window_length)
-        self.random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=args.ou_theta, mu=args.ou_mu, sigma=args.ou_sigma)
+        self.random_process = Myrandom(size=nb_actions)
 
         # Hyper-parameters
         self.batch_size = args.bsize
