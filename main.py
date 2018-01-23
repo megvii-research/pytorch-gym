@@ -6,8 +6,8 @@ from copy import deepcopy
 import torch
 import gym
 import signal
-# import pybullet
-# import pybullet_envs
+import pybullet
+import pybullet_envs
 from baselines import deepq
 
 from normalized_env import NormalizedEnv

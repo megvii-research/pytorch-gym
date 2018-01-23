@@ -38,23 +38,27 @@ class Actor(nn.Module):
 class Critic(nn.Module):
     def __init__(self, nb_states, nb_actions, hidden1=400, hidden2=300, init_w=3e-3):
         super(Critic, self).__init__()
-        self.fc1 = nn.Linear(nb_states, hidden1)
-        self.fc2 = nn.Linear(hidden1+nb_actions, hidden2)
+        hidden1 = hidden1 // 2
+        self.fc1s = nn.Linear(nb_states, hidden1)
+        self.fc1a = nn.Linear(nb_actions, hidden1)
+        self.fc2 = nn.Linear(hidden1+hidden1, hidden2)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
         self.init_weights(init_w)
     
     def init_weights(self, init_w):
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
+        self.fc1s.weight.data = fanin_init(self.fc1s.weight.data.size())
+        self.fc1a.weight.data = fanin_init(self.fc1a.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
     
     def forward(self, xs):
-        x, a = xs
-        out = self.fc1(x)
-        out = self.selu(out)
-        # debug()
-        out = self.fc2(torch.cat([out,a],1))
+        s, a = xs
+        s = self.fc1s(s)
+        s = self.selu(s)
+        a = self.fc1a(a)
+        a = self.selu(a)
+        out = self.fc2(torch.cat([s,a],1))
         out = self.selu(out)
         out = self.fc3(out)
         return out
