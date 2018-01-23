@@ -15,7 +15,7 @@ from util import *
 criterion = nn.MSELoss()
 
 class DDPG(object):
-    def __init__(self, nb_states, nb_actions, args, discrete):
+    def __init__(self, nb_states, nb_actions, args, discrete, USE_CUDA = 1):
         
         if args.seed > 0:
             self.seed(args.seed)
@@ -43,7 +43,7 @@ class DDPG(object):
         
         #Create replay buffer
         self.memory = rpm(args.rmsize) # SequentialMemory(limit=args.rmsize, window_length=args.window_length)
-        self.random_process = Myrandom(size=nb_actions)
+        self.random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=args.ou_theta, mu=args.ou_mu, sigma=args.ou_sigma)
 
         # Hyper-parameters
         self.batch_size = args.bsize
@@ -112,6 +112,7 @@ class DDPG(object):
         self.critic_target.eval()
 
     def cuda(self):
+        print("use cuda")
         self.actor.cuda()
         self.actor_target.cuda()
         self.critic.cuda()
@@ -169,6 +170,7 @@ class DDPG(object):
 
 
     def save_model(self,output):
+        self.actor.cpu()
         torch.save(
             self.actor.state_dict(),
             '{}/actor.pkl'.format(output)
@@ -177,6 +179,7 @@ class DDPG(object):
             self.critic.state_dict(),
             '{}/critic.pkl'.format(output)
         )
+        self.actor.cuda()
 
     def seed(self,s):
         torch.manual_seed(s)
