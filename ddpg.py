@@ -103,7 +103,7 @@ class DDPG(object):
         soft_update(self.actor_target, self.actor, self.tau)
         soft_update(self.critic_target, self.critic, self.tau)
 
-        return target_q_batch.mean(), value_loss, policy_loss
+        return -policy_loss, value_loss
 
     def eval(self):
         self.actor.eval()
