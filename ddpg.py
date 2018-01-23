@@ -1,3 +1,4 @@
+
 import numpy as np
 
 import torch
@@ -6,7 +7,7 @@ from torch.optim import Adam
 
 from model import (Actor, Critic)
 from rpm import rpm
-from random_process import *
+from random_process import OrnsteinUhlenbeckProcess
 
 from util import *
 
@@ -32,18 +33,18 @@ class DDPG(object):
         }
         self.actor = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
+        self.actor_optim = Adam(self.actor.parameters(), lr=args.prate)
 
         self.critic = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
         self.critic_target = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
+        self.critic_optim = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
         
         #Create replay buffer
         self.memory = rpm(args.rmsize) # SequentialMemory(limit=args.rmsize, window_length=args.window_length)
-        self.random_process = Myrandom(size=nb_actions)
+        self.random_process = OrnsteinUhlenbeckProcess(size=nb_actions, theta=args.ou_theta, mu=args.ou_mu, sigma=args.ou_sigma)
 
         # Hyper-parameters
         self.batch_size = args.bsize
@@ -130,16 +131,13 @@ class DDPG(object):
         else:
             return action
 
-    def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=1):
+    def select_action(self, s_t, decay_epsilon=True, return_fix=False):
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
         # print(self.random_process.sample(), action)
-        noise_level = noise_level * self.is_training * max(self.epsilon, 0)
-        action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
-        # print(self.is_training * max(self.epsilon, 0) * self.random_process.sample() * noise_level, noise_level)
+        action += self.is_training * max(self.epsilon, 0) * self.random_process.sample()
         action = np.clip(action, -1., 1.)
-        # print(action)
 
         if decay_epsilon:
             self.epsilon -= self.depsilon
@@ -154,17 +152,23 @@ class DDPG(object):
 
     def reset(self, obs):
         self.s_t = obs
-        self.random_process.reset_states()
 
     def load_weights(self, output):
         if output is None: return
 
+        print('output=', output)
+
         self.actor.load_state_dict(
             torch.load('{}/actor.pkl'.format(output))
         )
-
+        self.actor_target.load_state_dict(
+            torch.load('{}/actor_target.pkl'.format(output))
+        )
         self.critic.load_state_dict(
             torch.load('{}/critic.pkl'.format(output))
+        )
+        self.critic_target.load_state_dict(
+            torch.load('{}/critic_target.pkl'.format(output))
         )
 
 
@@ -174,8 +178,16 @@ class DDPG(object):
             '{}/actor.pkl'.format(output)
         )
         torch.save(
+            self.actor_target.state_dict(),
+            '{}/actor_target.pkl'.format(output)
+        )
+        torch.save(
             self.critic.state_dict(),
             '{}/critic.pkl'.format(output)
+        )
+        torch.save(
+            self.critic_target.state_dict(),
+            '{}/critic_target.pkl'.format(output)
         )
 
     def seed(self,s):
