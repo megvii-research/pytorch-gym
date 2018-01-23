@@ -3,6 +3,7 @@ import gym
 from normalized_env import NormalizedEnv
 import numpy as np
 from observation_processor import *
+import signal
 
 sbc = sbc()
 args = sbc.recv()
@@ -16,42 +17,56 @@ if args.seed > 0:
     np.random.seed(args.seed)
     env.seed(args.seed)
 
-sbc.send(env.observation_space.shape[0])
-if args.discrete:
-    sbc.send(env.action_space.n)
-else:
-    sbc.send(env.action_space.shape[0])
-
 # start episode
 
-episode = episode_steps = 0
+episode_steps = 0
 episode_reward = 0.
 episode_memory = queue()
 
+
+def sigalarm_handler(signum, frame):
+    exit()
+
+
+signal.signal(signal.SIGALRM, sigalarm_handler)
+
+
 while True:
+    signal.alarm(args.episode_max_time)
+
     observation = sbc.recv()
+    if args.check_thread: print('subprocess: receive observation!', observation)
     if observation is None:
         observation = env.reset()
         episode_memory.append(observation)
         observation = episode_memory.getObservation(args.window_length, observation)
+        if args.check_thread: print('subprocess: send observation!', observation)
         sbc.send(observation)
 
     action = sbc.recv()
+    if args.vis:
+        env.render()
+    if args.check_thread: print('subprocess: receive action!', action)
     observation2, reward, done, info = env.step(action)
     episode_memory.append(observation2)
     observation2 = episode_memory.getObservation(args.window_length, observation2)
 
+    if args.check_thread: print('subprocess: send observation2!', observation2)
     sbc.send(observation2)
+    if args.check_thread: print('subprocess: send reward!', reward)
     sbc.send(reward)
+    if args.check_thread: print('subprocess: send done!', done)
     sbc.send(done)
     # sbc.send(info)
 
+    # update
     episode_steps += 1
     episode_reward += reward
 
-    flag = False
 
     if done or (episode_steps >= args.max_episode_length - 1 and args.max_episode_length):  # end of episode
+        if args.check_thread: print('flag is True')
+        sbc.send(True)
         # for i in range(args.traintimes):
         #     log += 1
         #     if step > args.warmup:
@@ -62,12 +77,10 @@ while True:
         # if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode, episode_reward, step))
         # writer.add_scalar('data/reward', episode_reward, log)
 
-        # reset
-        observation = None
-        episode_steps = 0
-        episode_reward = 0.
-        episode += 1
-        flag = True
+        if args.check_thread: print('subprocess: send episode_reward!', episode_reward)
+        sbc.send(episode_reward)
 
-    sbc.send(flag)
+    else:
+        if args.check_thread: print('flag is False')
+        sbc.send(False)
 

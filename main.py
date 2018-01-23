@@ -20,14 +20,15 @@ from collections import deque
 import threading as th
 
 import signal
+import time
 from llll import PythonInstance
 
 gym.undo_logger_setup()
 
 writer = SummaryWriter()
 
-def train(pool, num_iterations, agent, proc, evaluate, proc_cnt, validate_steps, output, window_length, max_episode_length=None,
-          debug=False, visualize=False, traintimes=None, resume=None):
+def train(num_iterations, agent, evaluate, proc_cnt, validate_steps, output, window_length, max_episode_length=None,
+          debug=False, visualize=False, traintimes=None, resume=None, check_thread=False):
     if resume is not None:
         print('load weight')
         agent.load_weights(output)
@@ -37,61 +38,106 @@ def train(pool, num_iterations, agent, proc, evaluate, proc_cnt, validate_steps,
         print('memory saving...'),
         agent.memory.save(output)
         print('done')
-        print('kill subprocessing...')
-        for pr in range(proc_cnt):
-            proc[pr].kill()
-            proc[pr].join()
-        print('done')
         exit()
     signal.signal(signal.SIGINT, sigint_handler)
-    
+
+    global log
+    global step
+    global episode
     log = 0
-    agent.is_training = True
     step = 0
+    episode = 0
+    agent.is_training = True
     threadx = [None for _ in range(proc_cnt)]
     # max_reward = -100000.
+    mutex = th.Lock()
 
-    def episode_once(xproc):
+    def episode_once(x):
         observation = None
+        pi = PythonInstance(open('./sub_process.py').read())
+        pi.send(args)
         while True:
-            proc[xproc].send(observation)
+            if check_thread: print('main process: send observation!', observation)
+            pi.send(observation)
             if observation is None:
-                observation = proc[xproc].recv()
+                observation = pi.recv()
+                if check_thread: print('main process: receive observation!', observation)
+                mutex.acquire()
                 agent.reset(observation)
+                mutex.release()
 
             # agent pick action
+            # mutex protect
+            mutex.acquire()
+            global step
             if step <= args.warmup and resume is None:
                 action = agent.random_action()
             else:
                 action = agent.select_action(observation)
+            mutex.release()
 
-            proc[xproc].send(action)
-            observation2 = proc[xproc].recv()
-            reward = proc[xproc].recv()
-            done = proc[xproc].recv()
+            if check_thread: print('main process: send action!', action)
+            pi.send(action)
+            observation2 = pi.recv()
+            if check_thread: print('main process: receive observation2!', observation2)
+            reward = pi.recv()
+            if check_thread: print('main process: receive reward!', reward)
+            done = pi.recv()
+            if check_thread: print('main process: receive done!', done)
+
+            # mutex protect
+            mutex.acquire()
             agent.observe(reward, observation2, done)
-
             step += 1
+            mutex.release()
 
             observation = deepcopy(observation2)
 
-            flag = proc[xproc].recv()
+            flag = pi.recv()
+            if check_thread: print('main process: receive flag!', flag)
             if flag:
-                pool.append(xproc)
+                episode_reward = pi.recv()
+                if check_thread: print('main process: receive episode_reward!', episode_reward)
+                pi.kill()
+                pi.join()
+
+                # mutex protect
+                global log
+                global episode
+                episode += 1
+                for i in range(args.traintimes):
+                    mutex.acquire()
+                    log += 1
+                    if step > args.warmup:
+                        Q, value_loss, policy_loss = agent.update_policy()
+                        writer.add_scalar('data/Q', Q.data.numpy(), log)
+                        writer.add_scalar('data/critic_loss', value_loss.data.numpy(), log)
+                        writer.add_scalar('data/actor_loss', policy_loss.data.numpy(), log)
+                    mutex.release()
+
+                mutex.acquire()
+                if debug: prGreen('#{}: episode_reward:{} steps:{}'.format(episode, episode_reward, step))
+                writer.add_scalar('data/reward', episode_reward, log)
+                mutex.release()
+
+                pool.append(x)
                 break
 
-
+    pool = deque()
+    for i in range(proc_cnt):
+        pool.append(i)
     while step < num_iterations:
-        if pool.count() is not 0:
+        time.sleep(0.1)
+        if pool:
             xproc = pool.popleft()
             if threadx[xproc] is not None:
                 threadx[xproc].join()
-            threadx[xproc] = th.Thread(target=episode_once, args=(xproc))
+            threadx[xproc] = th.Thread(target=episode_once, args=(xproc,))
             threadx[xproc].start()
 
-    for j in range(proc_cnt):
-        if threadx[j] is not None:
-            threadx[j].join()
+    for thr in threadx:
+        if thr is not None:
+            thr.join()
 
 
         # reset if it is the start of episode
@@ -162,7 +208,7 @@ def train(pool, num_iterations, agent, proc, evaluate, proc_cnt, validate_steps,
 
     sigint_handler(0, 0)
 
-def test(num_episodes, agent, proc, evaluate, model_path, visualize=True, debug=False):
+def test(num_episodes, agent, evaluate, model_path, visualize=True, debug=False):
 
     if model_path == None:
         model_path = 'output/{}-run1'.format(args.env)
@@ -209,7 +255,9 @@ if __name__ == "__main__":
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--vis', action='store_true')
     parser.add_argument('--discrete', dest='discrete', action='store_true')
-    parser.add_argument('--process', default=1, type=int, help='process num')
+    parser.add_argument('--process', default=3, type=int, choices=[i+1 for i in range(10)], help='process num')
+    parser.add_argument('--episode_max_time', default=100, type=int)
+    parser.add_argument('--check_thread', dest='check_thread', action='store_true')
     # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
     # parser.add_argument('--cuda', dest='cuda', action='store_true') # TODO
 
@@ -221,29 +269,27 @@ if __name__ == "__main__":
         args.output = args.resume
 
 # pybullet
+    if args.discrete:
+        env = gym.make(args.env)
+        env.unwrapped
+    else:
+        env = NormalizedEnv(gym.make(args.env))
 
-    proc = []
-    pool = deque()
-    for i in range(args.process):
-        process_code = open('sub_process.py').read()
-        proc.append(PythonInstance(process_code))
-        proc[i].send(args)
-        nb_states = proc[i].recv()
-        nb_actions = proc[i].recv()
-        pool.append(i)
+    nb_states = env.observation_space.shape[0]
+    if args.discrete:
+        nb_actions = env.action_space.n
+    else:
+        nb_actions = env.action_space.shape[0]
 
     agent = DDPG(nb_states, nb_actions, args, args.discrete)
     # evaluate = Evaluator(args.validate_episodes,
     #    args.validate_steps, max_episode_length=args.max_episode_length)
     evaluate = None
-
-    if args.test == False:
-        train(pool, args.train_iter, agent, proc, evaluate, args.process,
+    if args.test is False:
+        train(args.train_iter, agent, evaluate, args.process,
               args.validate_steps, args.output, args.window_length, max_episode_length=args.max_episode_length,
-              debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
-        for j in range(args.process):
-            proc[j].kill()
-            proc[j].join()
+              debug=args.debug, visualize=args.vis, traintimes=args.traintimes,
+              resume=args.resume, check_thread=args.check_thread)
     else:
-        test(args.validate_episodes, agent, proc, evaluate, args.resume,
+        test(args.validate_episodes, agent, evaluate, args.resume,
              visualize=True, debug=args.debug)

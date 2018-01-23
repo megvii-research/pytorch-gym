@@ -14,3 +14,7 @@ class queue:
             else :
                 state = np.concatenate((ob, state))
         return np.array(state).ravel()
+
+    def clear(self):
+        self.q.clear()
+

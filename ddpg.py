@@ -61,7 +61,7 @@ class DDPG(object):
         # 
         if USE_CUDA: self.cuda()
         
-    def update_policy(self, train_actor = True):
+    def update_policy(self, train_actor=True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
             next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
