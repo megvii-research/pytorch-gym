@@ -19,3 +19,6 @@ class fastenv():
     def reset(self):
         tmp = self.env.reset()
         return tmp
+
+    def render(self):
+        self.env.render()

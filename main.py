@@ -123,13 +123,14 @@ def test(num_episodes, agent, env, evaluate, model_path, window_length, visualiz
     if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
     agent.load_weights(model_path)
+    if debug: prRed('load model from {}'.format(model_path))        
     agent.is_training = False
     agent.eval()
-    policy = lambda x: agent.select_action(x, decay_epsilon=False)
+    policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
 
     for i in range(num_episodes):
-        validate_reward = evaluate(env, policy, window_length, debug=debug, visualize=visualize, save=False)
-        if debug: prYellow('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
+        validate_reward = evaluate(env, policy, window_length=window_length, visualize=visualize, debug=debug)
+        if debug: prRed('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
 
 
 if __name__ == "__main__":

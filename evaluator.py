@@ -41,6 +41,7 @@ class Evaluator(object):
                 # update
                 episode_reward += reward
                 episode_steps += 1
+            if debug: prRed('[Evaluate] reward:{}'.format(episode_reward))
                 
             result.append(episode_reward)
 

@@ -173,7 +173,9 @@ class DDPG(object):
     def save_model(self, output):
         if self.use_cuda:
             self.actor.cpu()
+            self.actor_target.cpu()
             self.critic.cpu()
+            self.critic_target.cpu()
         torch.save(
             self.actor.state_dict(),
             '{}/actor.pkl'.format(output)
@@ -192,7 +194,9 @@ class DDPG(object):
         )
         if self.use_cuda:
             self.actor.cuda()
+            self.actor_target.cuda()
             self.critic.cuda()
+            self.critic_target.cuda()
 
     def seed(self,s):
         torch.manual_seed(s)
