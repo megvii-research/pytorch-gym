@@ -141,17 +141,14 @@ if __name__ == "__main__":
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=600, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
-    parser.add_argument('--prate', default=1e-3, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
+    parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     parser.add_argument('--warmup', default=1000, type=int, help='time without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.96, type=float, help='')
-    parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
+    parser.add_argument('--discount', default=0.95, type=float, help='')
+    parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
     parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
-    parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
-    parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
-    parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
     parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validate experiment')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
     parser.add_argument('--validate_interval', default=10, type=int, help='how many episodes to perform a validate experiment')
@@ -212,4 +209,4 @@ if __name__ == "__main__":
 
     else:
         test(args.validate_episodes, agent, env, evaluate, args.resume, args.window_length, 
-             visualize=True, debug=args.debug)
+             visualize=args.vis, debug=args.debug)

@@ -44,7 +44,7 @@ class DDPG(object):
         self.random_process = Myrandom(size=nb_actions)
 
         # Hyper-parameters
-        self.batch_size = args.bsize
+        self.batch_size = args.batch_size
         self.tau = args.tau
         self.discount = args.discount
         self.depsilon = 1.0 / args.epsilon
