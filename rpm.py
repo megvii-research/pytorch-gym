@@ -62,10 +62,12 @@ class rpm(object):
     
     def save(self, pathname):
         self.lock.acquire()
+        pathname = '{}/memory.pkl'.format(pathname)
         pickle.dump([self.buffer,self.index], open(pathname, 'wb'), True)
-        print('memory dumped into',pathname)
+        print('memory dumped into', pathname)
         self.lock.release()
         
     def load(self, pathname):
+        pathname = '{}/memory.pkl'.format(pathname)
         [self.buffer,self.index] = pickle.load(open(pathname, 'rb'))
-        print('memory loaded from',pathname)
+        print('memory loaded from', pathname)

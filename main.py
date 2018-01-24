@@ -116,6 +116,8 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
             episode_reward = 0.
             episode += 1
 
+    sigint_handler(0, 0)
+
 def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False):
 
     if model_path is None:

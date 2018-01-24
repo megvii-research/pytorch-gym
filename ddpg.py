@@ -159,11 +159,16 @@ class DDPG(object):
         self.actor.load_state_dict(
             torch.load('{}/actor.pkl'.format(output))
         )
+        self.actor_target.load_state_dict(
+            torch.load('{}/actor_target.pkl'.format(output))
+        )
 
         self.critic.load_state_dict(
             torch.load('{}/critic.pkl'.format(output))
         )
-
+        self.critic_target.load_state_dict(
+            torch.load('{}/critic_target.pkl'.format(output))
+        )
 
     def save_model(self, output):
         if self.use_cuda:
@@ -174,8 +179,16 @@ class DDPG(object):
             '{}/actor.pkl'.format(output)
         )
         torch.save(
+            self.actor_target.state_dict(),
+            '{}/actor_target.pkl'.format(output)
+        )
+        torch.save(
             self.critic.state_dict(),
             '{}/critic.pkl'.format(output)
+        )
+        torch.save(
+            self.critic_target.state_dict(),
+            '{}/critic_target.pkl'.format(output)
         )
         if self.use_cuda:
             self.actor.cuda()
