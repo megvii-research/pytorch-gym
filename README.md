@@ -24,5 +24,7 @@ This is an implementation of Deep Deterministic Policy Gradient (DDPG) in bullet
 > #249: episode_reward:199.00 steps:1443 noise:0.03 time:3.27,3.14 </br>
 > [Evaluate] Step_0001463: mean_reward:343.0 and save model
 
+* **you can using this to understand each arguments' usage**
+> $ python main.py --help
 
 ## TODO
