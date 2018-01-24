@@ -26,7 +26,7 @@ import time
 
 writer = SummaryWriter()
 
-def train(num_iterations, agent, env, evaluate, validate_steps, output, window_length, max_episode_length=None,
+def train(num_iterations, agent, env, evaluate, validate_interval, output, window_length, max_episode_length=None,
           debug=False, visualize=False, traintimes=None, resume=None):
     if resume is not None:
         print('load weight')
@@ -53,6 +53,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
     while step < num_iterations:
         # reset if it is the start of episode
         if observation is None:
+            episode_memory.clear()
             observation = env.reset()
             episode_memory.append(observation)
             observation = episode_memory.getObservation(window_length, observation)
@@ -62,39 +63,38 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
         if step <= args.warmup and resume is None:
             action = agent.random_action()
         else:
-            action = agent.select_action(observation, noise_level = noise_level)
+            action = agent.select_action(observation, noise_level=noise_level)
             
         # env response with next_observation, reward, terminate_info
 
         # print("action = ", action)
-        observation2, reward, done, info = env.step(action)
-        episode_memory.append(observation2)
-        observation2 = episode_memory.getObservation(window_length, observation2)
+        observation, reward, done, info = env.step(action)
+        episode_memory.append(observation)
+        observation = episode_memory.getObservation(window_length, observation)
         
-        # print("observation shape = ", np.shape(observation2))
-        # print("observation = ", observation2)
+        # print("observation shape = ", np.shape(observation))
+        # print("observation = ", observation)
         # print("reward = ", reward)
         # exit()       
         # agent observe and update policy
-        agent.observe(reward, observation2, done)
-
-        # [optional] evaluate
-        if evaluate is not None and validate_steps > 0 and step % validate_steps == 0:
-            policy = lambda x: agent.select_action(x, decay_epsilon=False)
-            # validate_reward = evaluate(env, policy, debug=False, visualize=False)
-#            if debug: prYellow('[Evaluate] Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
-            # if validate_reward > max_reward and step != 0:
-            #    max_reward = validate_reward
-            if debug: prYellow('save')
-            agent.save_model(output)
-
+        agent.observe(reward, observation, done)
         # update 
         step += 1
         episode_steps += 1
         episode_reward += reward
-        observation = deepcopy(observation2)
 
         if done or (episode_steps >= max_episode_length - 1 and max_episode_length): # end of episode
+
+            # [optional] evaluate
+            if evaluate is not None and validate_interval > 0 and episode % validate_interval == 0:
+                policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
+                validate_reward = evaluate(env, policy, debug=False, visualize=False, window_length=window_length)
+                writer.add_scalar('data/Q', validate_reward, episode / validate_interval)
+                if debug: prRed('[Evaluate] Step_{:07d}: mean_reward:{} and save model'.format(step, validate_reward))
+                if validate_reward > max_reward and step != 0:
+                    max_reward = validate_reward
+                agent.save_model(output)
+            
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(traintimes):
@@ -103,7 +103,7 @@ def train(num_iterations, agent, env, evaluate, validate_steps, output, window_l
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('data/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('data/critic_loss', value_loss.data.cpu().numpy(), log)
-            if debug: prGreen('#{}: episode_reward:{:.2f} steps:{} noise:{:.2f} time:{:.2f},{:.2f}' \
+            if debug: prBlack('#{}: episode_reward:{:.2f} steps:{} noise:{:.2f} time:{:.2f},{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
             writer.add_scalar('data/reward', episode_reward, episode)
@@ -149,9 +149,9 @@ if __name__ == "__main__":
     parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
     parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
-    parser.add_argument('--validate_episodes', default=20, type=int, help='how many episode to perform during validate experiment')
+    parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validate experiment')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_steps', default=10000, type=int, help='how many steps to perform a validate experiment')
+    parser.add_argument('--validate_interval', default=20, type=int, help='how many episodes to perform a validate experiment')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.003, type=float, help='') 
     parser.add_argument('--train_iter', default=10000000, type=int, help='train iters each timestep')
@@ -197,15 +197,14 @@ if __name__ == "__main__":
 
     env = fastenv(env, args.action_repeat, args.vis)
     agent = DDPG(nb_states, nb_actions, args, args.discrete, args.cuda)
-    evaluate = Evaluator(args.validate_episodes, 
-        args.validate_steps, max_episode_length=args.max_episode_length)
+    evaluate = Evaluator(args.validate_episodes, max_episode_length=args.max_episode_length)
 
     if args.vis and args.env == 'HalfCheetahBulletEnv-v0':
         env.render()
     
     if args.test is False:
         train(args.train_iter, agent, env, evaluate, 
-              args.validate_steps, args.output, args.window_length, max_episode_length=args.max_episode_length,
+              args.validate_interval, args.output, args.window_length, max_episode_length=args.max_episode_length,
               debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
 
     else:

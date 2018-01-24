@@ -3,6 +3,9 @@ class queue:
     def __init__(self):
         self.q = []
 
+    def clear(self):
+        self.q = []
+        
     def append(self, ob):
         self.q.append(ob)
 
