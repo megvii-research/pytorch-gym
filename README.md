@@ -1,11 +1,13 @@
 # DDPG in bullet Gym using pytorch
 ## Overview
 This is an implementation of Deep Deterministic Policy Gradient (DDPG) in bullet Gym using PyTorch.
+
 ## Dependencies
-* Python 3.6
-* PyTorch 0.3.0
-* openAI gym
-* pybullet
+* Python 3.6.2
+* pytorch 0.2.0
+* gym
+* tensorboardX-1.0
+* pybullet (if you want to train agents for bullet env)
 
 ## Run
 * here is a simple example to train CartPole with high efficiency:

@@ -6,11 +6,11 @@ from copy import deepcopy
 import torch
 import gym
 import signal
-import pybullet
-import pybullet_envs
+# import pybullet
+# import pybullet_envs
 from normalized_env import NormalizedEnv
-from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
-from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
+# from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
+# from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
 from util import *
