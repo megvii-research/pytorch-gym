@@ -53,7 +53,6 @@ class DDPG(object):
         self.epsilon = 1.0
         self.s_t = None # Most recent state
         self.a_t = None # Most recent action
-        self.is_training = True
         self.use_cuda = use_cuda
         # 
         if self.use_cuda: self.cuda()
@@ -117,9 +116,8 @@ class DDPG(object):
         self.critic_target.cuda()
 
     def observe(self, r_t, s_t1, done):
-        if self.is_training:
-            self.memory.append([self.s_t, self.a_t, r_t, s_t1, done])
-            self.s_t = s_t1
+        self.memory.append([self.s_t, self.a_t, r_t, s_t1, done])
+        self.s_t = s_t1
 
     def random_action(self):
         action = np.random.uniform(-1.,1.,self.nb_actions)
@@ -134,9 +132,9 @@ class DDPG(object):
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
         # print(self.random_process.sample(), action)
-        noise_level = noise_level * self.is_training * max(self.epsilon, 0)
+        noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
-        # print(self.is_training * max(self.epsilon, 0) * self.random_process.sample() * noise_level, noise_level)
+        # print(max(self.epsilon, 0) * self.random_process.sample() * noise_level, noise_level)
         action = np.clip(action, -1., 1.)
         # print(action)
 
@@ -168,7 +166,9 @@ class DDPG(object):
 
 
     def save_model(self, output):
-        self.actor.cpu()
+        if self.use_cuda:
+            self.actor.cpu()
+            self.critic.cpu()
         torch.save(
             self.actor.state_dict(),
             '{}/actor.pkl'.format(output)
@@ -177,7 +177,9 @@ class DDPG(object):
             self.critic.state_dict(),
             '{}/critic.pkl'.format(output)
         )
-        if self.use_cuda: self.actor.cuda()
+        if self.use_cuda:
+            self.actor.cuda()
+            self.critic.cuda()
 
     def seed(self,s):
         torch.manual_seed(s)
