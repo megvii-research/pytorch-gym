@@ -22,9 +22,9 @@ This is an implementation of Deep Deterministic Policy Gradient (DDPG) in bullet
 >
 > --cuda: train this task using GPU
 >
-> —test: testing mode
+> --test: testing mode
 >
-> —resume <file pash>: load model from the path
+> --resume <file pash>: load model from the path
 
 ## Contributors
 
