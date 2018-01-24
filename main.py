@@ -89,8 +89,8 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
             if evaluate is not None and validate_interval > 0 and episode % validate_interval == 0:
                 policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
                 validate_reward = evaluate(env, policy, debug=False, visualize=False, window_length=window_length)
-                writer.add_scalar('data/Q', validate_reward, episode / validate_interval)
-                if debug: prRed('[Evaluate] Step_{:07d}: mean_reward:{} and save model'.format(step, validate_reward))
+                writer.add_scalar('data/validate_reward', validate_reward, episode / validate_interval)
+                if debug: prRed('[Evaluate and save] Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
                 if validate_reward > max_reward and step != 0:
                     max_reward = validate_reward
                 agent.save_model(output)
@@ -103,10 +103,10 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('data/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('data/critic_loss', value_loss.data.cpu().numpy(), log)
-            if debug: prBlack('#{}: episode_reward:{:.2f} steps:{} noise:{:.2f} time:{:.2f},{:.2f}' \
+            if debug: prBlack('#{}: train_reward:{:.2f} steps:{} noise:{:.2f} time:{:.2f},{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
-            writer.add_scalar('data/reward', episode_reward, episode)
+            writer.add_scalar('data/train_reward', episode_reward, episode)
             
             # reset
             noise_level = random.uniform(0, 1) / 2.
