@@ -18,7 +18,7 @@ from tensorboardX import SummaryWriter
 from observation_processor import queue
 from multi import fastenv
 
-from llll import Subprocess
+# from llll import Subprocess
 
 gym.undo_logger_setup()
 
@@ -32,7 +32,7 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
         print('load weight')
         agent.load_weights(output)
         agent.memory.load(output)
-
+g
     def sigint_handler(signum, frame):
         print('memory saving...'),
         agent.memory.save(output)
@@ -161,9 +161,9 @@ if __name__ == "__main__":
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
-    parser.add_argument('--test', action='store_true')
-    parser.add_argument('--vis', action='store_true')
-    parser.add_argument('--discrete', dest='discrete', action='store_true')
+    parser.add_argument('--test', action='store_true', help='test or not')
+    parser.add_argument('--vis', action='store_true', help='visualize each action or not')
+    parser.add_argument('--discrete', dest='discrete', action='store_true', help='the actions are discrete or not')
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
 
