@@ -147,7 +147,7 @@ if __name__ == "__main__":
     parser.add_argument('--bsize', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
-    parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
     parser.add_argument('--ou_theta', default=0.1, type=float, help='noise theta')
     parser.add_argument('--ou_sigma', default=0.1, type=float, help='noise sigma')
     parser.add_argument('--ou_mu', default=0.0, type=float, help='noise mu') 
@@ -197,12 +197,12 @@ if __name__ == "__main__":
     else:
         nb_actions = env.action_space.shape[0]
 
+    if args.vis and 'Bullet' in args.env:
+        env.render()
+        
     env = fastenv(env, args.action_repeat, args.vis)
     agent = DDPG(nb_states, nb_actions, args, args.discrete, args.cuda)
     evaluate = Evaluator(args.validate_episodes, max_episode_length=args.max_episode_length)
-
-    if args.vis and args.env == 'HalfCheetahBulletEnv-v0':
-        env.render()
     
     if args.test is False:
         train(args.train_iter, agent, env, evaluate, 
