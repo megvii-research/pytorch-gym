@@ -12,20 +12,27 @@ class ACE:
         self.discrete = args.discrete
 
     def __call__(self, st):
+        status = []
         actions = []
         tot_score = []
         for i in range(self.num):
             if i > self.iter: break
             action = self.ensemble[i].select_action(st, return_fix=True)
             actions.append(action)
+            status.append(st)
             tot_score.append(0.)
+            
+        for i in range(self.num):
+            if i > self.iter: break
+            score = self.ensemble[i].critic([
+                to_tensor(np.array(status), volatile=True), to_tensor(np.array(actions), volatile=True)
+            ])
             for j in range(self.num):
                 if j > self.iter: break
-                score = self.ensemble[j].critic([
-                    to_tensor(np.array([st]), volatile=True), to_tensor(np.array([action]), volatile=True)
-                ])
-                tot_score[i] += score.data[0][0]
+                tot_score[j] += score.data[j][0]
+                
         best = np.array(tot_score).argmax()
+        best = 0
         if self.discrete:
             return actions[best].argmax()
         return actions[best]
