@@ -1,4 +1,3 @@
-
 import numpy as np
 from observation_processor import queue
 from util import *
@@ -10,7 +9,7 @@ class Evaluator(object):
         self.max_episode_length = max_episode_length
         self.results = np.array([]).reshape(num_episodes,0)
 
-    def __call__(self, env, policy, debug=False, visualize=False, window_length=1):
+    def __call__(self, env, policy, debug=False, visualize=False, window_length=1, bullet=False):
 
         episode_memory = queue()
         observation = None
@@ -29,6 +28,7 @@ class Evaluator(object):
 
             # start episode
             done = False
+
             while not done:
                 action = policy(observation)
                 observation, reward, done, info = env.step(action)
@@ -37,6 +37,9 @@ class Evaluator(object):
                 if self.max_episode_length and episode_steps >= self.max_episode_length - 1:
                     done = True            
                 if visualize:
+                    if bullet:
+                        import pybullet
+                        pybullet.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-6.6,cameraTargetPosition=[10,0,0])
                     env.render()
                 # update
                 episode_reward += reward

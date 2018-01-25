@@ -6,8 +6,6 @@ from copy import deepcopy
 import torch
 import gym
 import signal
-# import pybullet
-# import pybullet_envs
 from normalized_env import NormalizedEnv
 # from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
@@ -28,7 +26,7 @@ import time
 writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, validate_interval, output, window_length, max_episode_length=None,
-          debug=False, visualize=False, traintimes=None, resume=None):
+          debug=False, visualize=False, traintimes=None, resume=None, bullet=False):
     if resume is not None:
         print('load weight')
         agent.load_weights(output)
@@ -89,7 +87,7 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
             # [optional] evaluate
             if evaluate is not None and validate_interval > 0 and episode % validate_interval == 0:
                 policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
-                validate_reward = evaluate(env, policy, debug=False, visualize=False, window_length=window_length)
+                validate_reward = evaluate(env, policy, debug=False, visualize=False, window_length=window_length, bullet=bullet)
                 writer.add_scalar('data/validate_reward', validate_reward, episode / validate_interval)
                 if debug: prRed('[Evaluate and save] Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
                 if validate_reward > max_reward and step != 0:
@@ -119,7 +117,7 @@ def train(num_iterations, agent, env, evaluate, validate_interval, output, windo
 
     sigint_handler(0, 0)
 
-def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False):
+def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
 
     if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
@@ -130,7 +128,7 @@ def test(num_episodes, agent, env, evaluate, model_path, window_length, visualiz
     policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
 
     for i in range(num_episodes):
-        validate_reward = evaluate(env, policy, window_length=window_length, visualize=visualize, debug=debug)
+        validate_reward = evaluate(env, policy, window_length=window_length, visualize=visualize, debug=debug, bullet=bullet)
         if debug: prRed('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
 
 
@@ -177,6 +175,10 @@ if __name__ == "__main__":
     else:
         args.output = args.resume
 
+    bullet = ("Bullet" in args.env)
+    if bullet:
+        import pybullet
+        import pybullet_envs
     if args.env == "KukaGym":
         pass
     #    env = KukaGymEnv(renders=False, isDiscrete=True)
@@ -201,8 +203,12 @@ if __name__ == "__main__":
         nb_actions = env.action_space.n
     else:
         nb_actions = env.action_space.shape[0]
-
-    if args.vis and 'Bullet' in args.env:
+    
+    if args.vis:
+        if bullet:
+            import pybullet
+            pybullet.resetDebugVisualizerCamera \
+                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
         env.render()
         
     env = fastenv(env, args.action_repeat, args.vis)
@@ -212,8 +218,8 @@ if __name__ == "__main__":
     if args.test is False:
         train(args.train_iter, agent, env, evaluate, 
               args.validate_interval, args.output, args.window_length, max_episode_length=args.max_episode_length,
-              debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume)
+              debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume, bullet=bullet)
 
     else:
         test(args.validate_episodes, agent, env, evaluate, args.resume, args.window_length, 
-             visualize=args.vis, debug=args.debug)
+             visualize=args.vis, debug=args.debug, bullet=bullet)
