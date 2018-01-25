@@ -158,46 +158,34 @@ class DDPG(object):
         if output is None: return
 
         self.actor.load_state_dict(
-            torch.load('{}/actor.pkl'.format(output))
+            torch.load('{}/actor0.pkl'.format(output))
         )
         self.actor_target.load_state_dict(
-            torch.load('{}/actor_target.pkl'.format(output))
+            torch.load('{}/actor0.pkl'.format(output))
         )
 
         self.critic.load_state_dict(
-            torch.load('{}/critic.pkl'.format(output))
+            torch.load('{}/critic0.pkl'.format(output))
         )
         self.critic_target.load_state_dict(
-            torch.load('{}/critic_target.pkl'.format(output))
+            torch.load('{}/critic0.pkl'.format(output))
         )
 
-    def save_model(self, output):
+    def save_model(self, output, num):
         if self.use_cuda:
             self.actor.cpu()
-            self.actor_target.cpu()
             self.critic.cpu()
-            self.critic_target.cpu()
         torch.save(
             self.actor.state_dict(),
-            '{}/actor.pkl'.format(output)
-        )
-        torch.save(
-            self.actor_target.state_dict(),
-            '{}/actor_target.pkl'.format(output)
+            '{}/actor{}.pkl'.format(output, num)
         )
         torch.save(
             self.critic.state_dict(),
-            '{}/critic.pkl'.format(output)
-        )
-        torch.save(
-            self.critic_target.state_dict(),
-            '{}/critic_target.pkl'.format(output)
+            '{}/critic{}.pkl'.format(output, num)
         )
         if self.use_cuda:
             self.actor.cuda()
-            self.actor_target.cuda()
             self.critic.cuda()
-            self.critic_target.cuda()
 
     def seed(self,s):
         torch.manual_seed(s)
