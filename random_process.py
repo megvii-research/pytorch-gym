@@ -4,7 +4,7 @@ import numpy as np
 # [reference] https://github.com/matthiasplappert/keras-rl/blob/master/rl/random.py
 
 class RandomProcess(object):
-    def reset_states(self):
+    def reset_status(self):
         pass
 
 class AnnealedGaussianProcess(RandomProcess):
@@ -37,7 +37,7 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
         self.dt = dt
         self.x0 = x0
         self.size = size
-        self.reset_states()
+        self.reset_status()
 
     def sample(self):
         x = self.x_prev + self.theta * (self.mu - self.x_prev) * self.dt + self.current_sigma * np.sqrt(self.dt) * np.random.normal(size=self.size)
@@ -45,7 +45,7 @@ class OrnsteinUhlenbeckProcess(AnnealedGaussianProcess):
         self.n_steps += 1
         return x
 
-    def reset_states(self):
+    def reset_status(self):
         self.x_prev = self.x0 if self.x0 is not None else np.zeros(self.size)
 
 class Myrandom():
@@ -55,5 +55,5 @@ class Myrandom():
     def sample(self):
         return np.random.normal(size=self.size)
 
-    def reset_states(self):
+    def reset_status(self):
         pass

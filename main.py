@@ -13,6 +13,7 @@ from normalized_env import NormalizedEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
+from cnn import CNN
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import queue
@@ -165,6 +166,8 @@ if __name__ == "__main__":
     parser.add_argument('--vis', action='store_true', help='visualize each action or not')
     parser.add_argument('--discrete', dest='discrete', action='store_true', help='the actions are discrete or not')
     parser.add_argument('--cuda', dest='cuda', action='store_true')
+    parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
+    parser.add_argument('--pic_status', default=10, type=int)
     # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
 
     args = parser.parse_args()
@@ -175,7 +178,8 @@ if __name__ == "__main__":
         args.output = args.resume
 
     if args.env == "KukaGym":
-        env = KukaGymEnv(renders=False, isDiscrete=True)
+        pass
+    #    env = KukaGymEnv(renders=False, isDiscrete=True)
     elif args.discrete:
         env = gym.make(args.env)
         env = env.unwrapped
@@ -187,9 +191,12 @@ if __name__ == "__main__":
         np.random.seed(args.seed)
         env.seed(args.seed)
 
-    # input states count & actions count
+    # input status count & actions count
     print(env.observation_space.shape, env.action_space.shape)
-    nb_states = env.observation_space.shape[0]
+    if args.pic:
+        nb_status = args.pic_status
+    else:
+        nb_status = env.observation_space.shape[0]
     if args.discrete:
         nb_actions = env.action_space.n
     else:
@@ -199,7 +206,7 @@ if __name__ == "__main__":
         env.render()
         
     env = fastenv(env, args.action_repeat, args.vis)
-    agent = DDPG(nb_states, nb_actions, args, args.discrete, args.cuda)
+    agent = DDPG(nb_status, nb_actions, args, args.discrete, args.cuda)
     evaluate = Evaluator(args.validate_episodes, max_episode_length=args.max_episode_length)
     
     if args.test is False:

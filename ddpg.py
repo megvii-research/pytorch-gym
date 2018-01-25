@@ -12,13 +12,14 @@ from util import *
 
 criterion = nn.MSELoss()
 
+
 class DDPG(object):
-    def __init__(self, nb_states, nb_actions, args, discrete, use_cuda=False):
+    def __init__(self, nb_status, nb_actions, args, discrete, use_cuda=False):
         
         if args.seed > 0:
             self.seed(args.seed)
 
-        self.nb_states = nb_states
+        self.nb_status = nb_status
         self.nb_actions = nb_actions
         self.discrete = discrete
         
@@ -28,12 +29,12 @@ class DDPG(object):
             'hidden2':args.hidden2, 
             'init_w':args.init_w
         }
-        self.actor = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.actor_target = Actor(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
+        self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        self.actor_target = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
 
-        self.critic = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
-        self.critic_target = Critic(self.nb_states * args.window_length, self.nb_actions, **net_cfg)
+        self.critic = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        self.critic_target = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
@@ -78,7 +79,7 @@ class DDPG(object):
         # Critic update
         self.critic.zero_grad()
 
-        q_batch = self.critic([ to_tensor(state_batch), to_tensor(action_batch) ])
+        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])
         
         value_loss = criterion(q_batch, target_q_batch)
         value_loss.backward()
@@ -93,7 +94,7 @@ class DDPG(object):
 
         policy_loss = policy_loss.mean()
         policy_loss.backward()
-        if train_actor == True:
+        if train_actor:
             self.actor_optim.step()
 
         # Target update
@@ -151,7 +152,7 @@ class DDPG(object):
 
     def reset(self, obs):
         self.s_t = obs
-        self.random_process.reset_states()
+        self.random_process.reset_status()
 
     def load_weights(self, output):
         if output is None: return
