@@ -108,7 +108,6 @@ class DDPG(object):
         self.critic_target.eval()
 
     def cuda(self):
-        print("use cuda")
         self.actor.cuda()
         self.actor_target.cuda()
         self.critic.cuda()

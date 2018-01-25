@@ -5,7 +5,7 @@ from ddpg import DDPG
 class ACE:
     def __init__(self, nb_status, nb_actions, args):
         self.ensemble = []
-        self.num = 5
+        self.num = args.ace
         self.iter = 0
         for i in range(self.num):
             self.ensemble.append(DDPG(nb_status, nb_actions, args))

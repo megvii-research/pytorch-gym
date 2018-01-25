@@ -39,12 +39,12 @@ def train(num_iterations, agent, env, evaluate, bullet):
     ace = args.ace
 
     # [optional] Actor-Critic Ensemble https://arxiv.org/pdf/1712.08987.pdf
-    if ace:
+    if ace != 1:
         ensemble = ACE(nb_status, nb_actions, args)
     
     if resume is not None:
         print('load weight')
-        if ace:
+        if ace != 1:
             ensemble.load(output)
         agent.load_weights(output)
         agent.memory.load(output)
@@ -108,7 +108,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 save_num += 1
                 if debug: prRed('[Save model] #{}'.format(save_num))
                 agent.save_model(output, save_num)
-                if ace:
+                if ace != 1:
                     ensemble.append(output, save_num)
 
             # [optional] evaluate
@@ -117,7 +117,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 writer.add_scalar('data/validate_reward', validate_reward, episode // validate_interval)
                 if debug: prRed('Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
 
-                if ace:
+                if ace != 1:
                     validate_reward = evaluate(env, ensemble, debug=debug, visualize=False)
                     writer.add_scalar('data/ensemble_validate_reward', validate_reward, episode // validate_interval)
                     if debug: prRed('ACE Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
@@ -166,8 +166,8 @@ if __name__ == "__main__":
 
     # arguments represent
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
-    parser.add_argument('--hidden1', default=600, type=int, help='hidden num of first fully connect layer')
-    parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
+    parser.add_argument('--hidden1', default=200, type=int, help='hidden num of first fully connect layer')
+    parser.add_argument('--hidden2', default=100, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     
@@ -179,10 +179,10 @@ if __name__ == "__main__":
     parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     
-    parser.add_argument('--validate_episodes', default=10, type=int, help='how many episode to perform during validation')
+    parser.add_argument('--validate_episodes', default=3, type=int, help='how many episode to perform during validation')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_interval', default=100, type=int, help='how many episodes to perform a validation')
-    parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
+    parser.add_argument('--validate_interval', default=20, type=int, help='how many episodes to perform a validation')
+    parser.add_argument('--save_interval', default=20, type=int, help='how many episodes to save model')
     parser.add_argument('--init_w', default=0.01, type=float, help='') 
     parser.add_argument('--train_iter', default=10000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
@@ -197,7 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
     parser.add_argument('--pic_status', default=10, type=int)
-    parser.add_argument('--ace', dest='ace', action='store_true')
+    parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
     
