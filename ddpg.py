@@ -14,14 +14,12 @@ criterion = nn.MSELoss()
 
 
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args, discrete, use_cuda=False):
-        
+    def __init__(self, nb_status, nb_actions, args):        
         if args.seed > 0:
             self.seed(args.seed)
-
         self.nb_status = nb_status
         self.nb_actions = nb_actions
-        self.discrete = discrete
+        self.discrete = args.discrete
         
         # Create Actor and Critic Network
         net_cfg = {
@@ -54,7 +52,7 @@ class DDPG(object):
         self.epsilon = 1.0
         self.s_t = None # Most recent state
         self.a_t = None # Most recent action
-        self.use_cuda = use_cuda
+        self.use_cuda = args.cuda
         # 
         if self.use_cuda: self.cuda()
         
@@ -132,16 +130,12 @@ class DDPG(object):
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
-        # print(self.random_process.sample(), action)
         noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
-        # print(max(self.epsilon, 0) * self.random_process.sample() * noise_level, noise_level)
         action = np.clip(action, -1., 1.)
-        # print(action)
 
         if decay_epsilon:
             self.epsilon -= self.depsilon
-
         self.a_t = action
         if return_fix:
             return action
@@ -154,21 +148,19 @@ class DDPG(object):
         self.s_t = obs
         self.random_process.reset_status()
 
-    def load_weights(self, output):
+    def load_weights(self, output, num=0):        
         if output is None: return
-
         self.actor.load_state_dict(
-            torch.load('{}/actor0.pkl'.format(output))
+            torch.load('{}/actor{}.pkl'.format(output, num))
         )
         self.actor_target.load_state_dict(
-            torch.load('{}/actor0.pkl'.format(output))
+            torch.load('{}/actor{}.pkl'.format(output, num))
         )
-
         self.critic.load_state_dict(
-            torch.load('{}/critic0.pkl'.format(output))
+            torch.load('{}/critic{}.pkl'.format(output, num))
         )
         self.critic_target.load_state_dict(
-            torch.load('{}/critic0.pkl'.format(output))
+            torch.load('{}/critic{}.pkl'.format(output, num))
         )
 
     def save_model(self, output, num):

@@ -25,7 +25,17 @@ import time
 
 writer = SummaryWriter()
 
-def train(num_iterations, agent, env, evaluate, output, window_length=1, validate_interval=0, save_interval=0, max_episode_length=None, debug=False, visualize=False, traintimes=None, resume=None, bullet=False):
+def train(num_iterations, agent, env, evaluate, args, bullet):
+    window_length = args.window_length
+    validate_interval = args.validate_interval
+    save_interval = args.save_interval
+    max_episode_length = args.max_episode_length
+    debug = args.debug
+    visualize = args.vis
+    traintimes = args.traintimes
+    output = args.output
+    resume = args.resume
+    
     if resume is not None:
         print('load weight')
         agent.load_weights(output)
@@ -45,7 +55,6 @@ def train(num_iterations, agent, env, evaluate, output, window_length=1, validat
     step = episode = episode_steps = 0
     episode_reward = 0.
     observation = None
-    max_reward = -100000.
     episode_num = 0
     episode_memory = queue()
     noise_level = random.uniform(0, 1) / 2.
@@ -87,11 +96,16 @@ def train(num_iterations, agent, env, evaluate, output, window_length=1, validat
             # [optional] evaluate
             if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                 policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
-                validate_reward = evaluate(env, policy, debug=False, visualize=False, window_length=window_length, bullet=bullet)
-                writer.add_scalar('data/validate_reward', validate_reward, episode / validate_interval)
-                if debug: prRed('[Evaluate] Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
-                if validate_reward > max_reward and step != 0:
-                    max_reward = validate_reward
+                validate_reward = evaluate(env, policy, debug=debug, visualize=False)                               
+                writer.add_scalar('data/validate_reward', validate_reward, episode // validate_interval)
+                if debug: prRed('Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
+
+                # [optional] Actor-Critic Ensemble https://arxiv.org/pdf/1712.08987.pdf
+#                if ensemble:
+#                    policy = ensemble(output, save_interval)
+#                    validate_reward = evaluate(env, policy, debug=debug, visualize=False)
+#                    writer.add_scalar('data/ensemble_validate_reward', validate_reward, episode // validate_interval)
+#                    if debug: prRed('Step_{:07d}: mean_reward:{}'.format(step, validate_reward))
 
             # [optional] save
             if episode > 0 and save_interval > 0 and episode % save_interval == 0:
@@ -106,7 +120,7 @@ def train(num_iterations, agent, env, evaluate, output, window_length=1, validat
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('data/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('data/critic_loss', value_loss.data.cpu().numpy(), log)
-            if debug: prBlack('#{}: train_reward:{:.2f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time{:.2f}' \
+            if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
             writer.add_scalar('data/train_reward', episode_reward, episode)
@@ -121,7 +135,7 @@ def train(num_iterations, agent, env, evaluate, output, window_length=1, validat
 
     sigint_handler(0, 0)
 
-def test(num_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
+def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
 
     if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
@@ -131,7 +145,7 @@ def test(num_episodes, agent, env, evaluate, model_path, window_length, visualiz
     agent.eval()
     policy = lambda x: agent.select_action(x, decay_epsilon=False, noise_level=0)
 
-    for i in range(num_episodes):
+    for i in range(validate_episodes):
         validate_reward = evaluate(env, policy, window_length=window_length, visualize=visualize, debug=debug, bullet=bullet)
         if debug: prRed('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
 
@@ -146,16 +160,16 @@ if __name__ == "__main__":
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--warmup', default=1000, type=int, help='time without training but only filling the replay memory')
+    parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.95, type=float, help='')
     parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
     parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
-    parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validate experiment')
+    parser.add_argument('--validate_episodes', default=10, type=int, help='how many episode to perform during validation')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_interval', default=10, type=int, help='how many episodes to perform a validate experiment')
-    parser.add_argument('--save_interval', default=50, type=int, help='how many episodes to save model')
+    parser.add_argument('--validate_interval', default=100, type=int, help='how many episodes to perform a validation')
+    parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--init_w', default=0.01, type=float, help='') 
     parser.add_argument('--train_iter', default=10000000, type=int, help='train iters each timestep')
@@ -171,10 +185,9 @@ if __name__ == "__main__":
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
     parser.add_argument('--pic_status', default=10, type=int)
-    # parser.add_argument('--l2norm', default=0.01, type=float, help='l2 weight decay') # TODO
-
+    
     args = parser.parse_args()
-    # StrCat args.output with args.env
+
     if args.resume is None:
         args.output = get_output_folder(args.output, args.env)
     else:
@@ -184,9 +197,9 @@ if __name__ == "__main__":
     if bullet:
         import pybullet
         import pybullet_envs
+        
     if args.env == "KukaGym":
-        pass
-    #    env = KukaGymEnv(renders=False, isDiscrete=True)
+        env = KukaGymEnv(renders=False, isDiscrete=True)
     elif args.discrete:
         env = gym.make(args.env)
         env = env.unwrapped
@@ -217,13 +230,10 @@ if __name__ == "__main__":
         env.render()
         
     env = fastenv(env, args.action_repeat, args.vis)
-    agent = DDPG(nb_status, nb_actions, args, args.discrete, args.cuda)
-    evaluate = Evaluator(args.validate_episodes, max_episode_length=args.max_episode_length)
+    agent = DDPG(nb_status, nb_actions, args)
+    evaluate = Evaluator(args, bullet=bullet)
     
     if args.test is False:
-        train(args.train_iter, agent, env, evaluate, 
-              args.output, validate_interval=args.validate_interval, save_interval=args.save_interval, window_length=args.window_length, max_episode_length=args.max_episode_length,
-              debug=args.debug, visualize=args.vis, traintimes=args.traintimes, resume=args.resume, bullet=bullet)
+        train(args.train_iter, agent, env, evaluate, args, bullet=bullet)
     else:
-        test(args.validate_episodes, agent, env, evaluate, args.resume, args.window_length, 
-             visualize=args.vis, debug=args.debug, bullet=bullet)
+        test(args.validate_episodes, agent, env, evaluate, args, bullet=bullet)
