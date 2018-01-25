@@ -126,7 +126,7 @@ class DDPG(object):
         else:
             return action
 
-    def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=1):
+    def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)

@@ -47,7 +47,7 @@ class Critic(nn.Module):
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
     
-    def forward(self, x):
+    def forward(self, x):        
         s, a = x
         out = self.fc1(torch.cat([s, a], 1))
         out = self.selu(out)
