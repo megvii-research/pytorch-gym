@@ -14,7 +14,7 @@ criterion = nn.MSELoss()
 
 
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args):        
+    def __init__(self, nb_status, nb_actions, args, train=True):        
         if args.seed > 0:
             self.seed(args.seed)
         self.nb_status = nb_status
@@ -25,14 +25,21 @@ class DDPG(object):
         net_cfg = {
             'hidden1':args.hidden1, 
             'hidden2':args.hidden2, 
-            'init_w':args.init_w
+            'init_w':args.init_w,
+            'use_bn':args.bn
         }
         self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        if train == False:
+            self.actor.train(mode=False)
+        self.actor_target.train(mode=False)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
 
         self.critic = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.critic_target = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        if train == False:
+            self.critic.train(mode=False)
+        self.critic_target.train(mode=False)
         self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
@@ -77,8 +84,9 @@ class DDPG(object):
         # Critic update
         self.critic.zero_grad()
 
-        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])
-        
+        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])        
+
+#        print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
         value_loss = criterion(q_batch, target_q_batch)
         value_loss.backward()
         self.critic_optim.step()
@@ -126,9 +134,11 @@ class DDPG(object):
             return action
 
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
+        self.actor.train(mode=False)
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
+        self.actor.train(mode=True)
         noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)

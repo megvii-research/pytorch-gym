@@ -197,6 +197,7 @@ if __name__ == "__main__":
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
     parser.add_argument('--pic_status', default=10, type=int)
+    parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
@@ -240,8 +241,8 @@ if __name__ == "__main__":
     if args.vis:
         if bullet:
             import pybullet
-            pybullet.resetDebugVisualizerCamera \
-                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
+#            pybullet.resetDebugVisualizerCamera \
+#                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
         env.render()
         
     env = fastenv(env, args.action_repeat, args.vis)

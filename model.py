@@ -10,10 +10,13 @@ def fanin_init(size, fanin=None):
     return torch.Tensor(size).uniform_(-v, v)
 
 class Actor(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=600, hidden2=300, init_w=1e-3):
+    def __init__(self, nb_status, nb_actions, hidden1=600, hidden2=300, init_w=1e-3, use_bn=False):
         super(Actor, self).__init__()
+        self.use_bn = use_bn
         self.fc1 = nn.Linear(nb_status, hidden1)
+        self.bn1 = nn.BatchNorm1d(hidden1, momentum=0.5)
         self.fc2 = nn.Linear(hidden1, hidden2)
+        self.bn2 = nn.BatchNorm1d(hidden2, momentum=0.5)
         self.fc3 = nn.Linear(hidden2, nb_actions)
         self.selu = nn.SELU()
         self.tanh = nn.Tanh()
@@ -26,18 +29,23 @@ class Actor(nn.Module):
     
     def forward(self, x):
         out = self.fc1(x)
+        if self.use_bn: out = self.bn1(out)
         out = self.selu(out)
         out = self.fc2(out)
+        if self.use_bn: out = self.bn2(out)
         out = self.selu(out)
         out = self.fc3(out)
         out = self.tanh(out)
         return out
 
 class Critic(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=600, hidden2=300, init_w=1e-3):
+    def __init__(self, nb_status, nb_actions, hidden1=600, hidden2=300, init_w=1e-3, use_bn=False):
         super(Critic, self).__init__()
+        self.use_bn = use_bn
         self.fc1 = nn.Linear(nb_status+nb_actions, hidden1)
+        self.bn1 = nn.BatchNorm1d(hidden1, momentum=0.5)
         self.fc2 = nn.Linear(hidden1, hidden2)
+        self.bn2 = nn.BatchNorm1d(hidden2, momentum=0.5)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
         self.init_weights(init_w)
@@ -50,8 +58,10 @@ class Critic(nn.Module):
     def forward(self, x):        
         s, a = x
         out = self.fc1(torch.cat([s, a], 1))
+        if self.use_bn: out = self.bn1(out)
         out = self.selu(out)
         out = self.fc2(out)
+        if self.use_bn: out = self.bn2(out)
         out = self.selu(out)
         out = self.fc3(out)
         return out
