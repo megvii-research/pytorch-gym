@@ -26,6 +26,10 @@ class Actor(nn.Module):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
+        self.bn1.weight.data.fill_(1)
+        self.bn1.bias.data.fill_(0)
+        self.bn2.weight.data.fill_(1)
+        self.bn2.bias.data.fill_(0)
     
     def forward(self, x):
         out = self.fc1(x)
@@ -54,6 +58,10 @@ class Critic(nn.Module):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
+        self.bn1.weight.data.fill_(1)
+        self.bn1.bias.data.fill_(0)
+        self.bn2.weight.data.fill_(1)
+        self.bn2.bias.data.fill_(0)
     
     def forward(self, x):        
         s, a = x

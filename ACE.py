@@ -8,7 +8,7 @@ class ACE:
         self.num = args.ace
         self.iter = 0
         for i in range(self.num):
-            self.ensemble.append(DDPG(nb_status, nb_actions, args, train=False))
+            self.ensemble.append(DDPG(nb_status, nb_actions, args))
         self.discrete = args.discrete
 
     def __call__(self, st):
@@ -21,8 +21,9 @@ class ACE:
             actions.append(action)
             status.append(st)
             tot_score.append(0.)
-            
+
         for i in range(self.num):
+            self.ensemble[i].eval()
             if i > self.iter: break
             score = self.ensemble[i].critic([
                 to_tensor(np.array(status), volatile=True), to_tensor(np.array(actions), volatile=True)
@@ -30,6 +31,7 @@ class ACE:
             for j in range(self.num):
                 if j > self.iter: break
                 tot_score[j] += score.data[j][0]
+            self.ensemble[i].train()
                 
         best = np.array(tot_score).argmax()
         best = 0

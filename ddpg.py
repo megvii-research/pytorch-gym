@@ -14,7 +14,7 @@ criterion = nn.MSELoss()
 
 
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args, train=True):        
+    def __init__(self, nb_status, nb_actions, args):        
         if args.seed > 0:
             self.seed(args.seed)
         self.nb_status = nb_status
@@ -30,16 +30,10 @@ class DDPG(object):
         }
         self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
-        if train == False:
-            self.actor.train(mode=False)
-        self.actor_target.train(mode=False)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
 
         self.critic = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.critic_target = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
-        if train == False:
-            self.critic.train(mode=False)
-        self.critic_target.train(mode=False)
         self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
@@ -68,9 +62,6 @@ class DDPG(object):
         state_batch, action_batch, reward_batch, \
             next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
 
-        # state_batch, action_batch, reward_batch, \
-        # next_state_batch, terminal_batch = self.memory.sample_and_split(self.batch_size)
-
         # Prepare for the target q batch
         next_q_values = self.critic_target([
             to_tensor(next_state_batch, volatile=True),
@@ -86,7 +77,7 @@ class DDPG(object):
 
         q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])        
 
-#        print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
+        # print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
         value_loss = criterion(q_batch, target_q_batch)
         value_loss.backward()
         self.critic_optim.step()
@@ -115,6 +106,12 @@ class DDPG(object):
         self.critic.eval()
         self.critic_target.eval()
 
+    def train(self):
+        self.actor.train()
+        self.actor_target.train()
+        self.critic.train()
+        self.critic_target.train()
+
     def cuda(self):
         self.actor.cuda()
         self.actor_target.cuda()
@@ -134,11 +131,11 @@ class DDPG(object):
             return action
 
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
-        self.actor.train(mode=False)
+        self.eval()
         action = to_numpy(
             self.actor(to_tensor(np.array([s_t])))
         ).squeeze(0)
-        self.actor.train(mode=True)
+        self.train()
         noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)
