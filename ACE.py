@@ -34,7 +34,6 @@ class ACE:
             self.ensemble[i].train()
                 
         best = np.array(tot_score).argmax()
-        best = 0
         if self.discrete:
             return actions[best].argmax()
         return actions[best]
