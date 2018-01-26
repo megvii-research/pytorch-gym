@@ -117,16 +117,16 @@ def train(num_iterations, agent, env, evaluate, bullet):
             if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                 validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
                 if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
-                writer.add_scalar('data/reward_var', np.var(validate_reward), episode // validate_interval)
+                writer.add_scalar('validate/reward_var', np.var(validate_reward), episode // validate_interval)
                 if ace != 1:
                     validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
                     if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
-                    writer.add_scalar('ACE/reward_var', np.var(validate_reward2), episode // validate_interval)
+                    writer.add_scalar('validate/ACE_reward_var', np.var(validate_reward2), episode // validate_interval)
                 for i in range(validate_episodes):
                     validate_num += 1
-                    writer.add_scalar('data/validate_reward', validate_reward[i], validate_num)
+                    writer.add_scalar('validate/reward', validate_reward[i], validate_num)
                     if ace != 1:
-                        writer.add_scalar('ACE/validate_reward', validate_reward2[i], validate_num)
+                        writer.add_scalar('validate/ACE_reward', validate_reward2[i], validate_num)
             
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
@@ -134,12 +134,12 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 if step > args.warmup:
                     log += 1
                     Q, value_loss = agent.update_policy()
-                    writer.add_scalar('data/Q', Q.data.cpu().numpy(), log)
-                    writer.add_scalar('data/critic_loss', value_loss.data.cpu().numpy(), log)
+                    writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
+                    writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
             if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
-            writer.add_scalar('data/train_reward', episode_reward, episode)
+            writer.add_scalar('train/train_reward', episode_reward, episode)
             
             # reset
             noise_level = random.uniform(0, 1) / 2.

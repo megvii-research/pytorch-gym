@@ -16,20 +16,20 @@ class ACE:
         actions = []
         tot_score = []
         for i in range(self.num):
-            if i > self.iter: break
+            if i >= self.iter: break
             action = self.ensemble[i].select_action(st, return_fix=True)
             actions.append(action)
             status.append(st)
             tot_score.append(0.)
 
         for i in range(self.num):
+            if i >= self.iter: break
             self.ensemble[i].eval()
-            if i > self.iter: break
             score = self.ensemble[i].critic([
                 to_tensor(np.array(status), volatile=True), to_tensor(np.array(actions), volatile=True)
             ])
             for j in range(self.num):
-                if j > self.iter: break
+                if j >= self.iter: break
                 tot_score[j] += score.data[j][0]
             self.ensemble[i].train()
                 
