@@ -104,9 +104,10 @@ def train(num_iterations, agent, env, evaluate, bullet):
         episode_reward += reward
         
         if done or (episode_steps >= max_episode_length - 1 and max_episode_length): # end of episode
-
+            if step <= args.warmup:
+                break
             # [optional] save
-            if episode > 0 and save_interval > 0 and episode % save_interval == 0 and step > args.warmup:
+            if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                 save_num += 1
                 if debug: prRed('[Save model] #{}'.format(save_num))
                 agent.save_model(output, save_num)
@@ -118,7 +119,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
                 if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
                 writer.add_scalar('validate/reward_var', np.var(validate_reward), episode // validate_interval)
-                if ace != 1:
+                if ace != 1 and save_num >= 1:
                     validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
                     if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
                     writer.add_scalar('validate/ACE_reward_var', np.var(validate_reward2), episode // validate_interval)
@@ -131,11 +132,10 @@ def train(num_iterations, agent, env, evaluate, bullet):
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(traintimes):
-                if step > args.warmup:
-                    log += 1
-                    Q, value_loss = agent.update_policy()
-                    writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
-                    writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
+                log += 1
+                Q, value_loss = agent.update_policy()
+                writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
+                writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
             if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
