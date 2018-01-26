@@ -103,9 +103,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         episode_steps += 1
         episode_reward += reward
         
-        if done or (episode_steps >= max_episode_length - 1 and max_episode_length): # end of episode
-            if step <= args.warmup:
-                break
+        if (done or (episode_steps >= max_episode_length - 1 and max_episode_length)) and step > args.warmup: # end of episode
             # [optional] save
             if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                 save_num += 1
