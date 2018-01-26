@@ -14,9 +14,9 @@ class Actor(nn.Module):
         super(Actor, self).__init__()
         self.use_bn = use_bn
         self.fc1 = nn.Linear(nb_status, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, momentum=0.5)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, momentum=0.5)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
         self.fc3 = nn.Linear(hidden2, nb_actions)
         self.selu = nn.SELU()
         self.tanh = nn.Tanh()
@@ -26,17 +26,13 @@ class Actor(nn.Module):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
-        self.bn1.weight.data.fill_(1)
-        self.bn1.bias.data.fill_(0)
-        self.bn2.weight.data.fill_(1)
-        self.bn2.bias.data.fill_(0)
     
     def forward(self, x):
         out = self.fc1(x)
-        if self.use_bn: out = self.bn1(out)
+#        if self.use_bn: out = self.bn1(out)
         out = self.selu(out)
         out = self.fc2(out)
-        if self.use_bn: out = self.bn2(out)
+#        if self.use_bn: out = self.bn2(out)
         out = self.selu(out)
         out = self.fc3(out)
         out = self.tanh(out)
@@ -47,9 +43,9 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.use_bn = use_bn
         self.fc1 = nn.Linear(nb_status+nb_actions, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, momentum=0.5)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, momentum=0.5)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
         self.init_weights(init_w)
@@ -58,10 +54,6 @@ class Critic(nn.Module):
         self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
         self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
         self.fc3.weight.data.uniform_(-init_w, init_w)
-        self.bn1.weight.data.fill_(1)
-        self.bn1.bias.data.fill_(0)
-        self.bn2.weight.data.fill_(1)
-        self.bn2.bias.data.fill_(0)
     
     def forward(self, x):        
         s, a = x
