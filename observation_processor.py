@@ -10,10 +10,13 @@ class queue:
         self.q.append(ob)
 
     def getObservation(self, window_length, ob):
-        state = []
+        state = ob
         for i in range(window_length):
+            if i == 0:
+                continue
             if(i < len(self.q)):
                 state = np.concatenate((self.q[len(self.q) - i - 1], state))
             else :
                 state = np.concatenate((ob, state))
+        # print(state.shape)
         return np.array(state).ravel()

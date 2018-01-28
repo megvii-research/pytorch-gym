@@ -13,21 +13,66 @@ from util import *
 criterion = nn.MSELoss()
 
 
+class CNN(nn.Module):
+    def __init__(self, c, h, w, output_size):
+        super(CNN, self).__init__()
+        self.c = c
+        self.h = h
+        self.w = w
+        self.output_size = output_size
+        self.conv1 = nn.Sequential( # input shape (c, h, w)
+            nn.Conv2d(
+                in_channels=c,  # input height
+                out_channels=16,  # n_filters
+                kernel_size=5,  # filter size
+                stride=1,  # filter movement/step
+                padding=2,
+            ),
+            nn.ReLU(),  # activation
+            nn.MaxPool2d(kernel_size=2) # shape (16, h/2, w/2)
+        )
+        self.conv2 = nn.Sequential(  # input shape (16, h/2, w/2)
+            nn.Conv2d(16, 32, 5, 1, 2),  # output shape (32, h/2, w/2)
+            nn.ReLU(),  # activation
+            nn.MaxPool2d(2),  # output shape (32, w/4, w/4)
+        )
+        self.out = nn.Linear(32 * (h // 4) * (w // 4), output_size)
+
+    def forward(self, x):
+        x = self.conv1(x)
+        x = self.conv2(x)
+        x = x.view(x.size(0), -1)
+        x = self.out(x)
+        return x
+
+    def get_feature_from_pic(self, x):
+        x = x.swapaxes(0, 2).swapaxes(1, 2).reshape(1, self.c, self.h, self.w)
+        x = self.forward(to_tensor(x)).reshape(self.output_size)
+        return x
+
+
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args):        
+    def __init__(self, nb_status, nb_actions, args, for_size):
         if args.seed > 0:
             self.seed(args.seed)
         self.nb_status = nb_status
         self.nb_actions = nb_actions
         self.discrete = args.discrete
+        self.pic = args.pic
+        self.window_length = args.window_length
+        if self.pic:
+            self.nb_status = args.pic_status
         
         # Create Actor and Critic Network
         net_cfg = {
             'hidden1':args.hidden1, 
             'hidden2':args.hidden2, 
-            'init_w':args.init_w,
-            'use_bn':args.bn
+            'init_w':args.init_w
         }
+        if self.pic:
+            self.cnn = CNN(for_size[0], for_size[1] * args.window_length, for_size[2], args.pic_status)
+            self.cnn_optim = Adam(self.cnn.parameters(), lr=args.rate)
+
         self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
@@ -56,11 +101,23 @@ class DDPG(object):
         self.use_cuda = args.cuda
         # 
         if self.use_cuda: self.cuda()
-        
+
+    def normalize(self, pic):
+        pic = pic.reshape(self.cnn.h, self.cnn.w, self.cnn.c)
+        pic = pic.swapaxes(0, 2).swapaxes(1, 2)
+        return pic
+
     def update_policy(self, train_actor = True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
             next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
+
+        if self.pic:
+            state_batch = self.cnn(to_tensor([self.normalize(x) for x in state_batch]))
+            next_state_batch = self.cnn(to_tensor([self.normalize(x) for x in next_state_batch]))
+
+        # state_batch, action_batch, reward_batch, \
+        # next_state_batch, terminal_batch = self.memory.sample_and_split(self.batch_size)
 
         # Prepare for the target q batch
         next_q_values = self.critic_target([
@@ -74,13 +131,17 @@ class DDPG(object):
 
         # Critic update
         self.critic.zero_grad()
+        if self.pic:
+            self.cnn.zero_grad()
 
-        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])        
-
-        # print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
+        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])
+        
         value_loss = criterion(q_batch, target_q_batch)
         value_loss.backward()
         self.critic_optim.step()
+        if self.pic:
+            self.cnn_optim.step()
+            self.cnn.zero_grad()
 
         self.actor.zero_grad()
 
@@ -93,6 +154,8 @@ class DDPG(object):
         policy_loss.backward()
         if train_actor:
             self.actor_optim.step()
+        if self.pic:
+            self.cnn_optim.step()
 
         # Target update
         soft_update(self.actor_target, self.actor, self.tau)
@@ -106,13 +169,8 @@ class DDPG(object):
         self.critic.eval()
         self.critic_target.eval()
 
-    def train(self):
-        self.actor.train()
-        self.actor_target.train()
-        self.critic.train()
-        self.critic_target.train()
-
     def cuda(self):
+        print("use cuda")
         self.actor.cuda()
         self.actor_target.cuda()
         self.critic.cuda()
@@ -130,12 +188,13 @@ class DDPG(object):
         else:
             return action
 
-    def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
-        self.eval()
+    def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=1):
+        if self.pic:
+            s_t = self.normalize(s_t)
+            s_t = self.cnn(to_tensor(np.array([s_t])))
         action = to_numpy(
-            self.actor(to_tensor(np.array([s_t])))
+            self.actor(to_tensor(s_t))
         ).squeeze(0)
-        self.train()
         noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)

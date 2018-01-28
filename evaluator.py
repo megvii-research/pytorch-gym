@@ -13,7 +13,6 @@ class Evaluator(object):
         self.results = np.array([]).reshape(self.validate_episodes, 0)
 
     def __call__(self, env, policy, debug=False, visualize=False):
-        
         episode_memory = queue()
         observation = None
         result = []
@@ -46,4 +45,4 @@ class Evaluator(object):
                 episode_steps += 1
             result.append(episode_reward)
         if debug: prRed('[Evaluate] reward:{}'.format(result))
-        return result
+        return np.mean(result)
