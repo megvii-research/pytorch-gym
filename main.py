@@ -27,6 +27,7 @@ import time
 writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, bullet):
+    fenv = fastenv(env, args.action_repeat, args.vis)
     window_length = args.window_length
     validate_interval = args.validate_interval
     save_interval = args.save_interval
@@ -74,7 +75,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         # reset if it is the start of episode
         if observation is None:
             episode_memory.clear()
-            observation = env.reset()
+            observation = fenv.reset()
             episode_memory.append(observation)
             observation = episode_memory.getObservation(window_length, observation)
             agent.reset(observation)
@@ -88,7 +89,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         # env response with next_observation, reward, terminate_info
 
         # print("action = ", action)
-        observation, reward, done, info = env.step(action)
+        observation, reward, done, info = fenv.step(action)
         episode_memory.append(observation)
         observation = episode_memory.getObservation(window_length, observation)
         
@@ -103,7 +104,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         episode_steps += 1
         episode_reward += reward
         
-        if (done or (episode_steps >= max_episode_length - 1 and max_episode_length)) and step > args.warmup: # end of episode
+        if (done or (episode_steps >= max_episode_length and max_episode_length)) and step > args.warmup: # end of episode
             # [optional] save
             if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                 save_num += 1
@@ -172,7 +173,7 @@ if __name__ == "__main__":
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=600, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
+    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
@@ -180,7 +181,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
-    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     
     parser.add_argument('--validate_episodes', default=10, type=int, help='how many episode to perform during validation')
@@ -249,7 +250,6 @@ if __name__ == "__main__":
 #                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
         env.render()
         
-    env = fastenv(env, args.action_repeat, args.vis)
     agent = DDPG(nb_status, nb_actions, args)
     evaluate = Evaluator(args, bullet=bullet)
     

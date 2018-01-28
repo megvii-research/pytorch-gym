@@ -29,10 +29,10 @@ class Actor(nn.Module):
     
     def forward(self, x):
         out = self.fc1(x)
-#        if self.use_bn: out = self.bn1(out)
+        if self.use_bn: out = self.bn1(out)
         out = self.selu(out)
         out = self.fc2(out)
-#        if self.use_bn: out = self.bn2(out)
+        if self.use_bn: out = self.bn2(out)
         out = self.selu(out)
         out = self.fc3(out)
         out = self.tanh(out)
