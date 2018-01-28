@@ -130,11 +130,12 @@ def train(num_iterations, agent, env, evaluate, bullet):
             
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
-            for i in range(traintimes):
-                log += 1
-                Q, value_loss = agent.update_policy()
-                writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
-                writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
+            if step > args.warmup:
+                for i in range(traintimes):
+                    log += 1
+                    Q, value_loss = agent.update_policy()
+                    writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
+                    writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
             if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
                               .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
