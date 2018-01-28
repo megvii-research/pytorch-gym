@@ -35,8 +35,6 @@ class Evaluator(object):
                 observation, reward, done, info = env.step(action)
                 episode_memory.append(observation)
                 observation = episode_memory.getObservation(self.window_length, observation)
-                if self.max_episode_length and episode_steps >= self.max_episode_length - 1:
-                    done = True
                 if visualize:
                     if self.bullet:
                         import pybullet

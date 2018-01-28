@@ -104,7 +104,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         episode_steps += 1
         episode_reward += reward
         
-        if (done or (episode_steps >= max_episode_length and max_episode_length)) and step > args.warmup: # end of episode
+        if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
             if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                 save_num += 1
@@ -221,6 +221,9 @@ if __name__ == "__main__":
         
     if args.env == "KukaGym":
         env = KukaGymEnv(renders=False, isDiscrete=True)
+    elif args.env == "LTR":
+        from osim.env import RunEnv
+        env = RunEnv(visualize=False)
     elif args.discrete:
         env = gym.make(args.env)
         env = env.unwrapped
