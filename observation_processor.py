@@ -9,7 +9,7 @@ class queue:
     def append(self, ob):
         self.q.append(ob)
 
-    def getObservation(self, window_length, ob):
+    def getObservation(self, window_length, ob, pic=False):
         state = ob
         for i in range(window_length):
             if i == 0: continue
@@ -17,4 +17,6 @@ class queue:
                 state = np.concatenate((self.q[len(self.q) - i - 1], state))
             else :
                 state = np.concatenate((state, ob))
+        if pic:
+            return np.array(state)
         return np.array(state).ravel()

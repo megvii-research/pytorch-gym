@@ -77,7 +77,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
             episode_memory.clear()
             observation = fenv.reset()
             episode_memory.append(observation)
-            observation = episode_memory.getObservation(window_length, observation)
+            observation = episode_memory.getObservation(window_length, observation, args.pic)
             agent.reset(observation)
 
         # agent pick action ...
@@ -85,13 +85,14 @@ def train(num_iterations, agent, env, evaluate, bullet):
             action = agent.random_action()
         else:
             action = agent.select_action(observation, noise_level=noise_level)
+            # print('step = ', step)
             
         # env response with next_observation, reward, terminate_info
 
         # print("action = ", action)
         observation, reward, done, info = fenv.step(action)
         episode_memory.append(observation)
-        observation = episode_memory.getObservation(window_length, observation)
+        observation = episode_memory.getObservation(window_length, observation, args.pic)
         
         # print("observation shape = ", np.shape(observation))
         # print("observation = ", observation)
@@ -103,7 +104,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
         step += 1
         episode_steps += 1
         episode_reward += reward
-        
         if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
             if step > args.warmup:
@@ -126,12 +126,12 @@ def train(num_iterations, agent, env, evaluate, bullet):
                     writer.add_scalar('validate/reward', np.mean(validate_reward), step)
                     if ace != 1 and save_num >= 1:
                         writer.add_scalar('validate/ACE_reward', np.mean(validate_reward2), step)
-            
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(episode_steps):
                 if step > args.warmup:
                     log += 1
+                    # print('updating', i)
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
@@ -175,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--crate', default=1e-4, type=float)
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.9, type=float, help='')
@@ -236,10 +237,7 @@ if __name__ == "__main__":
 
     # input status count & actions count
     print('observation_space', env.observation_space.shape, 'action_space', env.action_space.shape)
-    if args.pic:
-        nb_status = args.pic_status
-    else:
-        nb_status = env.observation_space.shape[0]
+    nb_status = env.observation_space.shape[0]
     if args.discrete:
         nb_actions = env.action_space.n
     else:

@@ -2,6 +2,7 @@ import numpy as np
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.optim import Adam
 
 from model import (Actor, Critic)
@@ -13,13 +14,42 @@ from util import *
 criterion = nn.MSELoss()
 
 
+class CNN(nn.Module):
+    def __init__(self, num_inputs, num_outputs):
+        super(CNN, self).__init__()
+        self.conv1 = nn.Conv2d(num_inputs, 32, 5, stride=1, padding=2)
+        self.maxp1 = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(32, 32, 5, stride=1, padding=1)
+        self.maxp2 = nn.MaxPool2d(2, 2)
+        self.conv3 = nn.Conv2d(32, 64, 4, stride=1, padding=1)
+        self.maxp3 = nn.MaxPool2d(2, 2)
+        self.conv4 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
+        self.maxp4 = nn.MaxPool2d(2, 2)
+
+        self.out = nn.Linear(21888, num_outputs)
+
+    def forward(self, inputs):
+        x = F.relu(self.maxp1(self.conv1(inputs)))
+        x = F.relu(self.maxp2(self.conv2(x)))
+        x = F.relu(self.maxp3(self.conv3(x)))
+        x = F.relu(self.maxp4(self.conv4(x)))
+
+        x = x.view(x.size(0), -1)
+
+        x = self.out(x)
+        return x
+
+
 class DDPG(object):
     def __init__(self, nb_status, nb_actions, args):        
         if args.seed > 0:
             self.seed(args.seed)
-        self.nb_status = nb_status
+        self.nb_status = nb_status * args.window_length
         self.nb_actions = nb_actions
         self.discrete = args.discrete
+        self.pic = args.pic
+        if self.pic:
+            self.nb_status = args.pic_status
         
         # Create Actor and Critic Network
         net_cfg = {
@@ -27,12 +57,15 @@ class DDPG(object):
             'hidden2':args.hidden2, 
             'use_bn':args.bn
         }
-        self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
-        self.actor_target = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        if args.pic:
+            self.cnn = CNN(3, args.pic_status)
+            self.cnn_optim = Adam(self.cnn.parameters(), lr=args.crate)
+        self.actor = Actor(self.nb_status, self.nb_actions, **net_cfg)
+        self.actor_target = Actor(self.nb_status, self.nb_actions, **net_cfg)
         self.actor_optim  = Adam(self.actor.parameters(), lr=args.prate)
 
-        self.critic = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
-        self.critic_target = Critic(self.nb_status * args.window_length, self.nb_actions, **net_cfg)
+        self.critic = Critic(self.nb_status, self.nb_actions, **net_cfg)
+        self.critic_target = Critic(self.nb_status, self.nb_actions, **net_cfg)
         self.critic_optim  = Adam(self.critic.parameters(), lr=args.rate)
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
@@ -55,17 +88,37 @@ class DDPG(object):
         self.use_cuda = args.cuda
         # 
         if self.use_cuda: self.cuda()
-        
+
+    def normalize(self, pic):
+        pic = pic.swapaxes(0, 2).swapaxes(1, 2)
+        return pic
+
     def update_policy(self, train_actor = True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
             next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
 
         # Prepare for the target q batch
-        next_q_values = self.critic_target([
-            to_tensor(next_state_batch, volatile=True),
-            self.actor_target(to_tensor(next_state_batch, volatile=True)),
-        ])
+        if self.pic:
+            state_batch = np.array([self.normalize(x) for x in state_batch])
+            state_batch = to_tensor(state_batch, volatile=True)
+            print('label 1')
+            print('size = ', state_batch.shape)
+            state_batch = self.cnn(state_batch)
+            print('label 2')
+            next_state_batch = np.array([self.normalize(x) for x in next_state_batch])
+            next_state_batch = to_tensor(next_state_batch, volatile=True)
+            next_state_batch = self.cnn(next_state_batch)
+            next_q_values = self.critic_target([
+                next_state_batch,
+                self.actor_target(next_state_batch)
+            ])
+        else:
+            next_q_values = self.critic_target([
+                to_tensor(next_state_batch, volatile=True),
+                self.actor_target(to_tensor(next_state_batch, volatile=True)),
+            ])
+        # print('batch of picture is ok')
         next_q_values.volatile = False
 
         target_q_batch = to_tensor(reward_batch) + \
@@ -73,20 +126,33 @@ class DDPG(object):
 
         # Critic update
         self.critic.zero_grad()
+        if self.pic: self.cnn.zero_grad()
 
-        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch) ])        
+        if self.pic:
+            state_batch.volatile = False
+            q_batch = self.critic([state_batch, to_tensor(action_batch)])
+        else:
+            q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch)])
 
         # print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
         value_loss = criterion(q_batch, target_q_batch)
         value_loss.backward()
         self.critic_optim.step()
+        if self.pic: self.cnn_optim.step()
 
         self.actor.zero_grad()
 
-        policy_loss = -self.critic([
-            to_tensor(state_batch),
-            self.actor(to_tensor(state_batch))
-        ])
+        if self.pic:
+            state_batch.volatile = False
+            policy_loss = -self.critic([
+                state_batch,
+                self.actor(state_batch)
+            ])
+        else:
+            policy_loss = -self.critic([
+                to_tensor(state_batch),
+                self.actor(to_tensor(state_batch))
+            ])
 
         policy_loss = policy_loss.mean()
         policy_loss.backward()
@@ -130,10 +196,20 @@ class DDPG(object):
             return action
 
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
+        if self.pic:
+            # print(s_t.shape)
+            s_t = self.normalize(s_t)
+            s_t = self.cnn(to_tensor(np.array([s_t])))
         self.eval()
-        action = to_numpy(
-            self.actor(to_tensor(np.array([s_t])))
-        ).squeeze(0)
+        # print(s_t.shape)
+        if self.pic:
+            action = to_numpy(
+                self.actor_target(s_t)
+            ).squeeze(0)
+        else:
+            action = to_numpy(
+                self.actor(to_tensor(np.array([s_t])))
+            ).squeeze(0)
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
