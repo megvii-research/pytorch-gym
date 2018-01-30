@@ -25,7 +25,6 @@ class DDPG(object):
         net_cfg = {
             'hidden1':args.hidden1, 
             'hidden2':args.hidden2, 
-            'init_w':args.init_w,
             'use_bn':args.bn
         }
         self.actor = Actor(self.nb_status * args.window_length, self.nb_actions, **net_cfg)

@@ -106,38 +106,39 @@ def train(num_iterations, agent, env, evaluate, bullet):
         
         if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
-            if episode > 0 and save_interval > 0 and episode % save_interval == 0:
-                save_num += 1
-                if debug: prRed('[Save model] #{}'.format(save_num))
-                agent.save_model(output, save_num)
-                if ace != 1:
-                    ensemble.append(output, save_num)
-
-            # [optional] evaluate
-            if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
-                validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
-                if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
-                writer.add_scalar('validate/reward_var', np.var(validate_reward), episode // validate_interval)
-                if ace != 1 and save_num >= 1:
-                    validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
-                    if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
-                    writer.add_scalar('validate/ACE_reward_var', np.var(validate_reward2), episode // validate_interval)
-                for i in range(validate_episodes):
-                    validate_num += 1
-                    writer.add_scalar('validate/reward', validate_reward[i], validate_num)
+            if step > args.warmup:
+                if episode > 0 and save_interval > 0 and episode % save_interval == 0:
+                    save_num += 1
+                    if debug: prRed('[Save model] #{}'.format(save_num))
+                    agent.save_model(output, save_num)
                     if ace != 1:
-                        writer.add_scalar('validate/ACE_reward', validate_reward2[i], validate_num)
+                        ensemble.append(output, save_num)
+
+                # [optional] evaluate
+                if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
+                    validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
+                    if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
+                    writer.add_scalar('validate/reward_var', np.var(validate_reward), episode // validate_interval)
+                    if ace != 1 and save_num >= 1:
+                        validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
+                        if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
+                        writer.add_scalar('validate/ACE_reward_var', np.var(validate_reward2), episode // validate_interval)
+                    for i in range(validate_episodes):
+                        validate_num += 1
+                        writer.add_scalar('validate/reward', validate_reward[i], validate_num)
+                        if ace != 1:
+                            writer.add_scalar('validate/ACE_reward', validate_reward2[i], validate_num)
             
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
-            if step > args.warmup:
-                for i in range(traintimes):
+            for i in range(episode_steps):
+                if step > args.warmup:
                     log += 1
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
             if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
-                              .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
+                .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
             writer.add_scalar('train/train_reward', episode_reward, episode)
             
@@ -172,15 +173,15 @@ if __name__ == "__main__":
 
     # arguments represent
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
-    parser.add_argument('--hidden1', default=600, type=int, help='hidden num of first fully connect layer')
+    parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
+    parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.96, type=float, help='')
-    parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
-    parser.add_argument('--rmsize', default=2000000, type=int, help='memory size')
+    parser.add_argument('--discount', default=0.9, type=float, help='')
+    parser.add_argument('--batch_size', default=64, type=int, help='minibatch size')
+    parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
@@ -189,8 +190,7 @@ if __name__ == "__main__":
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
     parser.add_argument('--validate_interval', default=100, type=int, help='how many episodes to perform a validation')
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
-    parser.add_argument('--init_w', default=0.01, type=float, help='') 
-    parser.add_argument('--train_iter', default=10000000, type=int, help='train iters each timestep')
+    parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
