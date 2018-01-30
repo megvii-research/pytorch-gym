@@ -13,6 +13,7 @@ class Evaluator(object):
         self.results = np.array([]).reshape(self.validate_episodes, 0)
 
     def __call__(self, env, policy, debug=False, visualize=False):
+        
         episode_memory = queue()
         observation = None
         result = []
@@ -34,8 +35,6 @@ class Evaluator(object):
                 observation, reward, done, info = env.step(action)
                 episode_memory.append(observation)
                 observation = episode_memory.getObservation(self.window_length, observation)
-                if self.max_episode_length and episode_steps >= self.max_episode_length - 1:
-                    done = True
                 if visualize:
                     if self.bullet:
                         import pybullet
@@ -45,4 +44,4 @@ class Evaluator(object):
                 episode_steps += 1
             result.append(episode_reward)
         if debug: prRed('[Evaluate] reward:{}'.format(result))
-        return np.mean(result)
+        return result
