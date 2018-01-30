@@ -118,7 +118,7 @@ class DDPG(object):
                 to_tensor(next_state_batch, volatile=True),
                 self.actor_target(to_tensor(next_state_batch, volatile=True)),
             ])
-        print('batch of picture is ok')
+        # print('batch of picture is ok')
         next_q_values.volatile = False
 
         target_q_batch = to_tensor(reward_batch) + \

@@ -31,7 +31,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
     window_length = args.window_length
     validate_interval = args.validate_interval
     save_interval = args.save_interval
-    max_episode_length = args.max_episode_length
+    max_episode_length = args.max_episode_length // args.action_repeat
     debug = args.debug
     visualize = args.vis
     traintimes = args.traintimes
@@ -69,7 +69,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
     episode_memory = queue()
     noise_level = random.uniform(0, 1) / 2.
     save_num = 0
-    validate_num = 0
+    # validate_num = 0
     
     while step <= num_iterations:
         # reset if it is the start of episode
@@ -85,7 +85,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
             action = agent.random_action()
         else:
             action = agent.select_action(observation, noise_level=noise_level)
-            print('step = ', step)
+            # print('step = ', step)
             
         # env response with next_observation, reward, terminate_info
 
@@ -104,7 +104,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
         step += 1
         episode_steps += 1
         episode_reward += reward
-
         if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
             if step > args.warmup:
@@ -119,23 +118,20 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                     validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
                     if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
-                    writer.add_scalar('validate/reward_var', np.var(validate_reward), episode // validate_interval)
                     if ace != 1 and save_num >= 1:
                         validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
                         if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
-                        writer.add_scalar('validate/ACE_reward_var', np.var(validate_reward2), episode // validate_interval)
-                    for i in range(validate_episodes):
-                        validate_num += 1
-                        writer.add_scalar('validate/reward', validate_reward[i], validate_num)
-                        if ace != 1:
-                            writer.add_scalar('validate/ACE_reward', validate_reward2[i], validate_num)
-            
+#                    for i in range(validate_episodes):
+#                        validate_num += 1
+                    writer.add_scalar('validate/reward', np.mean(validate_reward), step)
+                    if ace != 1 and save_num >= 1:
+                        writer.add_scalar('validate/ACE_reward', np.mean(validate_reward2), step)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(episode_steps):
                 if step > args.warmup:
                     log += 1
-                    print('updating', i)
+                    # print('updating', i)
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
@@ -189,9 +185,9 @@ if __name__ == "__main__":
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     
-    parser.add_argument('--validate_episodes', default=10, type=int, help='how many episode to perform during validation')
+    parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validation')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_interval', default=100, type=int, help='how many episodes to perform a validation')
+    parser.add_argument('--validate_interval', default=10, type=int, help='how many episodes to perform a validation')
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')

@@ -19,5 +19,4 @@ class queue:
                 state = np.concatenate((state, ob))
         if pic:
             return np.array(state)
-
         return np.array(state).ravel()
