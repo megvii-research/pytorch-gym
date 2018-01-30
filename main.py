@@ -71,7 +71,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
     save_num = 0
     validate_num = 0
     
-    while step < num_iterations:
+    while step <= num_iterations:
         # reset if it is the start of episode
         if observation is None:
             episode_memory.clear()
