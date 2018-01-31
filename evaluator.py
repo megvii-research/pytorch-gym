@@ -11,6 +11,7 @@ class Evaluator(object):
         self.validate_episodes = args.validate_episodes
         self.max_episode_length = args.max_episode_length
         self.results = np.array([]).reshape(self.validate_episodes, 0)
+        self.pic = args.pic
 
     def __call__(self, env, policy, debug=False, visualize=False):
         
@@ -23,18 +24,17 @@ class Evaluator(object):
             episode_memory.clear()
             observation = env.reset()
             episode_memory.append(observation)
-            observation = episode_memory.getObservation(self.window_length, observation)
+            observation = episode_memory.getObservation(self.window_length, observation, self.pic)
             episode_steps = 0
             episode_reward = 0.     
-            assert observation is not None
-            
+            assert observation is not None            
             # start episode
             done = False
             while not done and (episode_steps <= self.max_episode_length or not self.max_episode_length):
                 action = policy(observation)
                 observation, reward, done, info = env.step(action)
                 episode_memory.append(observation)
-                observation = episode_memory.getObservation(self.window_length, observation)
+                observation = episode_memory.getObservation(self.window_length, observation, self.pic)
                 if visualize:
                     if self.bullet:
                         import pybullet

@@ -15,18 +15,18 @@ criterion = nn.MSELoss()
 
 
 class CNN(nn.Module):
-    def __init__(self, num_inputs, num_outputs):
+    def __init__(self, num_outputs):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 32, 5, stride=1, padding=2)
+        self.conv1 = nn.Conv2d(1, 32, 5, stride=1, padding=2)
         self.maxp1 = nn.MaxPool2d(2, 2)
         self.conv2 = nn.Conv2d(32, 32, 5, stride=1, padding=1)
         self.maxp2 = nn.MaxPool2d(2, 2)
-        self.conv3 = nn.Conv2d(32, 64, 4, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(32, 32, 4, stride=1, padding=1)
         self.maxp3 = nn.MaxPool2d(2, 2)
-        self.conv4 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
+        self.conv4 = nn.Conv2d(32, 32, 3, stride=1, padding=1)
         self.maxp4 = nn.MaxPool2d(2, 2)
 
-        self.out = nn.Linear(21888, num_outputs)
+        self.out = nn.Linear(1920, num_outputs)
 
     def forward(self, inputs):
         x = F.relu(self.maxp1(self.conv1(inputs)))
@@ -41,6 +41,10 @@ class CNN(nn.Module):
 
 
 class DDPG(object):
+    def normalize(self, pic):
+        pic = pic.swapaxes(0, 2).swapaxes(1, 2)
+        return pic
+
     def __init__(self, nb_status, nb_actions, args):        
         if args.seed > 0:
             self.seed(args.seed)
@@ -58,7 +62,7 @@ class DDPG(object):
             'use_bn':args.bn
         }
         if args.pic:
-            self.cnn = CNN(3, args.pic_status)
+            self.cnn = CNN(args.pic_status)
             self.cnn_optim = Adam(self.cnn.parameters(), lr=args.crate)
         self.actor = Actor(self.nb_status, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status, self.nb_actions, **net_cfg)
@@ -89,9 +93,6 @@ class DDPG(object):
         # 
         if self.use_cuda: self.cuda()
 
-    def normalize(self, pic):
-        pic = pic.swapaxes(0, 2).swapaxes(1, 2)
-        return pic
 
     def update_policy(self, train_actor = True):
         # Sample batch
@@ -102,10 +103,7 @@ class DDPG(object):
         if self.pic:
             state_batch = np.array([self.normalize(x) for x in state_batch])
             state_batch = to_tensor(state_batch, volatile=True)
-            print('label 1')
-            print('size = ', state_batch.shape)
             state_batch = self.cnn(state_batch)
-            print('label 2')
             next_state_batch = np.array([self.normalize(x) for x in next_state_batch])
             next_state_batch = to_tensor(next_state_batch, volatile=True)
             next_state_batch = self.cnn(next_state_batch)
@@ -197,11 +195,9 @@ class DDPG(object):
 
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
         if self.pic:
-            # print(s_t.shape)
             s_t = self.normalize(s_t)
             s_t = self.cnn(to_tensor(np.array([s_t])))
         self.eval()
-        # print(s_t.shape)
         if self.pic:
             action = to_numpy(
                 self.actor_target(s_t)

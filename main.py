@@ -1,4 +1,4 @@
-#!/usr/bin/env python3 
+#!/usr/bin/env python3
 import random
 import numpy as np
 import argparse
@@ -6,12 +6,11 @@ from copy import deepcopy
 import torch
 import gym
 import signal
-from normalized_env import NormalizedEnv
+from normalized_env import *
 # from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
-from cnn import CNN
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import queue
@@ -27,7 +26,7 @@ import time
 writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, bullet):
-    fenv = fastenv(env, args.action_repeat, args.vis)
+    fenv = fastenv(env, args.action_repeat, args.vis, args.pic)
     window_length = args.window_length
     validate_interval = args.validate_interval
     save_interval = args.save_interval
@@ -85,19 +84,15 @@ def train(num_iterations, agent, env, evaluate, bullet):
             action = agent.random_action()
         else:
             action = agent.select_action(observation, noise_level=noise_level)
-            # print('step = ', step)
             
         # env response with next_observation, reward, terminate_info
-
         # print("action = ", action)
         observation, reward, done, info = fenv.step(action)
         episode_memory.append(observation)
         observation = episode_memory.getObservation(window_length, observation, args.pic)
         
-        # print("observation shape = ", np.shape(observation))
         # print("observation = ", observation)
         # print("reward = ", reward)
-        # exit()       
         # agent observe and update policy
         agent.observe(reward, observation, done)
         # update 
@@ -116,19 +111,17 @@ def train(num_iterations, agent, env, evaluate, bullet):
 
                 # [optional] evaluate
                 if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
-                    validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
+                    validate_reward = evaluate(fenv, agent.select_action, debug=debug, visualize=False)
                     if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
                     if ace != 1 and save_num >= 1:
-                        validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
+                        validate_reward2 = evaluate(fenv, ensemble, debug=debug, visualize=False)
                         if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
-#                    for i in range(validate_episodes):
-#                        validate_num += 1
                     writer.add_scalar('validate/reward', np.mean(validate_reward), step)
                     if ace != 1 and save_num >= 1:
                         writer.add_scalar('validate/ACE_reward', np.mean(validate_reward2), step)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
-            for i in range(episode_steps):
+            for i in range(traintimes):
                 if step > args.warmup:
                     log += 1
                     # print('updating', i)
@@ -173,12 +166,12 @@ if __name__ == "__main__":
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
-    parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--crate', default=1e-4, type=float)
+    parser.add_argument('--rate', default=3e-4, type=float, help='learning rate')
+    parser.add_argument('--prate', default=3e-4, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--crate', default=3e-4, type=float)
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.9, type=float, help='')
+    parser.add_argument('--discount', default=0.96, type=float, help='')
     parser.add_argument('--batch_size', default=64, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
@@ -201,7 +194,7 @@ if __name__ == "__main__":
     parser.add_argument('--discrete', dest='discrete', action='store_true', help='the actions are discrete or not')
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
-    parser.add_argument('--pic_status', default=10, type=int)
+    parser.add_argument('--pic_status', default=100, type=int)
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
 
@@ -218,17 +211,18 @@ if __name__ == "__main__":
     if bullet:
         import pybullet
         import pybullet_envs
-        
+
     if args.env == "KukaGym":
         env = KukaGymEnv(renders=False, isDiscrete=True)
     elif args.env == "LTR":
         from osim.env import RunEnv
         env = RunEnv(visualize=False)
-    elif args.discrete:
-        env = gym.make(args.env)
-        env = env.unwrapped
     else:
-        env = NormalizedEnv(gym.make(args.env))
+        env = gym.make(args.env)
+        if args.discrete:
+            env = env.unwrapped
+        else:
+            env = NormalizedEnv(env)
 
     # input random seed
     if args.seed > 0:

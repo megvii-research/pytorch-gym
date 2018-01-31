@@ -1,9 +1,19 @@
+import numpy as np
+# preprocess raw image to 80*80 gray image
+def preprocess(observation):
+    import cv2
+    observation = cv2.cvtColor(cv2.resize(observation, (84, 110)), cv2.COLOR_BGR2GRAY)
+    observation = observation[26:110,:]
+    ret, observation = cv2.threshold(observation,1,255,cv2.THRESH_BINARY)
+    return np.reshape(observation,(84,84,1))
+
 class fastenv():
-    def __init__(self, env, action_repeat, vis=False):
+    def __init__(self, env, action_repeat, vis=False, pic=False):
         self.action_repeat = action_repeat
         self.q = []
         self.env = env
         self.vis = vis
+        self.pic = pic
         
     def step(self, action):
         tot_reward = 0.
@@ -14,11 +24,15 @@ class fastenv():
                 break
             if self.vis:
                 self.env.render()
+        if self.pic:
+            observation = preprocess(observation)
         return observation, tot_reward, done, info
 
     def reset(self):
-        tmp = self.env.reset()
-        return tmp
+        observation = self.env.reset()
+        if self.pic:
+            return preprocess(observation)
+        return observation
 
     def render(self):
         self.env.render()
