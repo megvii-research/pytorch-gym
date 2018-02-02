@@ -227,7 +227,7 @@ class DDPG(object):
         self.s_t = obs
         self.random_process.reset_status()
 
-    def load_weights(self, output, num=0):        
+    def load_weights(self, output, num=1):        
         if output is None: return
         self.actor.load_state_dict(
             torch.load('{}/actor{}.pkl'.format(output, num))
