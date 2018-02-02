@@ -24,7 +24,6 @@ gym.undo_logger_setup()
 
 import time
 
-writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, bullet):
     fenv = fastenv(env, args.action_repeat, args.vis)
@@ -213,6 +212,8 @@ if __name__ == "__main__":
         args.output = get_output_folder(args.output, args.env)
     else:
         args.output = args.resume
+
+    writer = SummaryWriter(args.output)
 
     bullet = ("Bullet" in args.env)
     if bullet:
