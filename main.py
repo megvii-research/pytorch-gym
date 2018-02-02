@@ -17,6 +17,7 @@ from tensorboardX import SummaryWriter
 from observation_processor import queue
 from multi import fastenv
 from ACE import ACE
+import cProfile
 
 # from llll import Subprocess
 
@@ -24,7 +25,6 @@ gym.undo_logger_setup()
 
 import time
 
-writer = SummaryWriter()
 
 def train(num_iterations, agent, env, evaluate, bullet):
     fenv = fastenv(env, args.action_repeat, args.vis)
@@ -204,6 +204,7 @@ if __name__ == "__main__":
     parser.add_argument('--pic_status', default=10, type=int)
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
+    parser.add_argument('--profile', action='store_true', help='Profile the code')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
     
@@ -213,6 +214,8 @@ if __name__ == "__main__":
         args.output = get_output_folder(args.output, args.env)
     else:
         args.output = args.resume
+
+    writer = SummaryWriter(args.output)
 
     bullet = ("Bullet" in args.env)
     if bullet:
@@ -233,7 +236,11 @@ if __name__ == "__main__":
     # input random seed
     if args.seed > 0:
         np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        random.seed(args.seed)
         env.seed(args.seed)
+        if args.cuda:
+            torch.cuda.manual_seed(args.seed)
 
     # input status count & actions count
     print('observation_space', env.observation_space.shape, 'action_space', env.action_space.shape)
@@ -248,12 +255,19 @@ if __name__ == "__main__":
             import pybullet
 #            pybullet.resetDebugVisualizerCamera \
 #                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
-        env.render()
+            env.render()
         
     agent = DDPG(nb_status, nb_actions, args)
     evaluate = Evaluator(args, bullet=bullet)
+
+    def run(cmd):
+        if args.profile:
+            print('Use following to inspect the profiling results: "python -m pstats profile.out", then in the browser, input "sort cumulative" and followed by "stats".')
+            cProfile.run(cmd, filename='profile.out', sort='cumulative')
+        else:
+            eval(cmd)
     
     if args.test is False:
-        train(args.train_iter, agent, env, evaluate, bullet=bullet)
+        run('train(args.train_iter, agent, env, evaluate, bullet=bullet)')
     else:
-        test(args.validate_episodes, agent, env, evaluate, bullet=bullet)
+        run('test(args.validate_episodes, agent, env, evaluate, bullet=bullet)')

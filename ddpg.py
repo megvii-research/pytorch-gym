@@ -41,9 +41,7 @@ class CNN(nn.Module):
 
 
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args):        
-        if args.seed > 0:
-            self.seed(args.seed)
+    def __init__(self, nb_status, nb_actions, args):
         self.nb_status = nb_status * args.window_length
         self.nb_actions = nb_actions
         self.discrete = args.discrete
@@ -259,8 +257,3 @@ class DDPG(object):
         if self.use_cuda:
             self.actor.cuda()
             self.critic.cuda()
-
-    def seed(self,s):
-        torch.manual_seed(s)
-        if self.use_cuda:
-            torch.cuda.manual_seed(s)
