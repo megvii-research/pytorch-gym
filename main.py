@@ -248,7 +248,7 @@ if __name__ == "__main__":
             import pybullet
 #            pybullet.resetDebugVisualizerCamera \
 #                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
-        env.render()
+            env.render()
         
     agent = DDPG(nb_status, nb_actions, args)
     evaluate = Evaluator(args, bullet=bullet)
