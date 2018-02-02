@@ -225,12 +225,15 @@ class DDPG(object):
 
     def load_weights(self, output, num=0):        
         if output is None: return
-        self.actor.load_state_dict(
-            torch.load('{}/actor{}.pkl'.format(output, num))
-        )
-        self.actor_target.load_state_dict(
-            torch.load('{}/actor{}.pkl'.format(output, num))
-        )
+        for i in range(self.num_actor):
+            actor = self.actors[i]
+            actor_target = self.actor_targets[i]
+            actor.load_state_dict(
+                torch.load('{}/actor{}_{}.pkl'.format(output, num, i))
+            )
+            actor_target.load_state_dict(
+                torch.load('{}/actor{}_{}.pkl'.format(output, num, i))
+            )
         self.critic.load_state_dict(
             torch.load('{}/critic{}.pkl'.format(output, num))
         )
@@ -240,16 +243,19 @@ class DDPG(object):
 
     def save_model(self, output, num):
         if self.use_cuda:
-            self.actor.cpu()
+            for i in range(self.num_actor):
+                self.actors[i].cpu()
             self.critic.cpu()
-        torch.save(
-            self.actor.state_dict(),
-            '{}/actor{}.pkl'.format(output, num)
-        )
+        for i in range(self.num_actor):
+            torch.save(
+                self.actors[i].state_dict(),
+                '{}/actor{}_{}.pkl'.format(output, num, i)
+            )
         torch.save(
             self.critic.state_dict(),
             '{}/critic{}.pkl'.format(output, num)
         )
         if self.use_cuda:
-            self.actor.cuda()
+            for i in range(self.num_actor):
+                self.actors[i].cuda()
             self.critic.cuda()
