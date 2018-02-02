@@ -110,7 +110,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                     save_num += 1
                     if debug: prRed('[Save model] #{}'.format(save_num))
-                    # agent.save_model(output, save_num)
+                    agent.save_model(output, save_num)
                     if ace != 1:
                         ensemble.append(output, save_num)
 
@@ -256,7 +256,7 @@ if __name__ == "__main__":
 #            pybullet.resetDebugVisualizerCamera \
 #                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
             env.render()
-        
+
     agent = DDPG(nb_status, nb_actions, args)
     evaluate = Evaluator(args, bullet=bullet)
 

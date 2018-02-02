@@ -110,7 +110,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                     save_num += 1
                     if debug: prRed('[Save model] #{}'.format(save_num))
-                    # agent.save_model(output, save_num)
+                    agent.save_model(output, save_num)
                     if ace != 1:
                         ensemble.append(output, save_num)
 
@@ -150,8 +150,8 @@ def train(num_iterations, agent, env, evaluate, bullet):
 
     sigint_handler(0, 0)
 
-def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
 
+def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
     if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
     agent.load_weights(model_path)
