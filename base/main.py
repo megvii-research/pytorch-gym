@@ -60,7 +60,9 @@ def train(num_iterations, agent, env, evaluate, bullet):
         agent.save_model(output, 0)
         print('done')
         exit()
-    signal.signal(signal.SIGINT, sigint_handler)
+
+    if not args.no_sigint:
+        signal.signal(signal.SIGINT, sigint_handler)
 
     time_stamp = 0.
     log = 0
@@ -151,7 +153,8 @@ def train(num_iterations, agent, env, evaluate, bullet):
             episode_reward = 0.
             episode += 1
 
-    sigint_handler(0, 0)
+    if not args.no_sigint:
+        sigint_handler(0, 0)
 
 def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
 
@@ -208,6 +211,7 @@ if __name__ == "__main__":
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
     parser.add_argument('--profile', action='store_true', help='Profile the code')
+    parser.add_argument('--no_sigint', action='store_true', help='Don\'t hijack the sigint.')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
     
