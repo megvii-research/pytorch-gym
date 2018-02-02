@@ -11,6 +11,8 @@ This is an implementation of Deep Deterministic Policy Gradient (DDPG) in bullet
 
 ## Run
 * here is a simple example to train CartPole with high efficiency:
+> $ cd base
+
 > $ python main.py --debug --discrete --env=CartPole-v0 --vis
 * **you can use this to understand usage of each argument:**
 > $ python main.py --help
