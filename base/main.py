@@ -49,7 +49,10 @@ def train(num_iterations, agent, env, evaluate, bullet):
         if ace != 1:
             ensemble.load(output)
         agent.load_weights(output)
-        agent.memory.load(output)
+        try:
+            agent.memory.load(output)
+        except Exception as e:
+            print(e)
 
     def sigint_handler(signum, frame):
         print('memory saving...'),
