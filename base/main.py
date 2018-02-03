@@ -202,6 +202,7 @@ if __name__ == "__main__":
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--resume_num', default=1, type=int, help='Number of the weight to load. Using 1 will load actor1.pkl/critic1.pkl.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
+    parser.add_argument('--init_method', default='uniform', choices=['uniform', 'normal'], type=str, help='Initialization method of params.')
 
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--test', action='store_true', help='test or not')
