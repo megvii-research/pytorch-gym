@@ -11,7 +11,6 @@ from normalized_env import NormalizedEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
-from cnn import CNN
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import queue
