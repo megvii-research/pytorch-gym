@@ -10,13 +10,13 @@ def fanin_init(size, fanin=None):
     return torch.Tensor(size).uniform_(-v, v)
 
 class Actor(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False, use_bn_affine=False):
         super(Actor, self).__init__()
-        self.use_bn = use_bn
+        self.use_bn = use_bn or use_bn_affine
         self.fc1 = nn.Linear(nb_status, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
         self.fc3 = nn.Linear(hidden2, nb_actions)
         self.selu = nn.SELU()
         self.tanh = nn.Tanh()
@@ -39,13 +39,13 @@ class Actor(nn.Module):
         return out
 
 class Critic(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False, use_bn_affine=False):
         super(Critic, self).__init__()
-        self.use_bn = use_bn
+        self.use_bn = use_bn or use_bn_affine
         self.fc1 = nn.Linear(nb_status+nb_actions, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
         self.init_weights(init_w)

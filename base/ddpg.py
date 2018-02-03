@@ -53,7 +53,8 @@ class DDPG(object):
         net_cfg = {
             'hidden1':args.hidden1, 
             'hidden2':args.hidden2, 
-            'use_bn':args.bn
+            'use_bn':args.bn,
+            'use_bn_affine':args.bn_affine
         }
         if args.pic:
             self.cnn = CNN(3, args.pic_status)

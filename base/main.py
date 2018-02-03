@@ -211,6 +211,7 @@ if __name__ == "__main__":
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
     parser.add_argument('--pic_status', default=10, type=int)
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
+    parser.add_argument('--bn_affine', action='store_true', help='use BatchNorm layers with affine transformation.')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
     parser.add_argument('--profile', action='store_true', help='Profile the code')
     parser.add_argument('--no_sigint', action='store_true', help='Don\'t hijack the sigint.')
