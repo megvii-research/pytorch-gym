@@ -228,7 +228,7 @@ if __name__ == "__main__":
         print('Writing to {}'.format(args.output))
 
     writer = SummaryWriter(args.output)
-    with open(os.path.join(args.output, 'cmdline.txt'), 'w') as f:
+    with open(os.path.join(args.output, 'cmdline.txt'), 'a') as f:
         f.write(' '.join(sys.argv) + '\n')
 
     bullet = ("Bullet" in args.env)
