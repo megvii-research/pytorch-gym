@@ -1,4 +1,4 @@
-Pendulum-v0
+### Pendulum-v0
 * requires using original FPS for training.
 
 ```bash
