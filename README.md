@@ -22,13 +22,21 @@ This is an implementation of Deep Deterministic Policy Gradient (DDPG) in bullet
 >
 > --discrete: if the actions are discrete rather than continuous
 >
-> --vis: render each action (but it would slow down your training speed) 
+> --vis: render each action (but it would slow down your training speed)
 >
 > --cuda: train this task using GPU
 >
 > --test: testing mode
 >
 > --resume <file pash>: load model from the path
+
+## DDPG from baselines
+
+```
+# run HalfCheetah-v1 with default parameters
+cd ./baselines
+python main.py 
+```
 
 ## Contributors
 
