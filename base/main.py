@@ -11,13 +11,13 @@ from normalized_env import NormalizedEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
 from evaluator import Evaluator
 from ddpg import DDPG
-from cnn import CNN
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import queue
 from multi import fastenv
 from ACE import ACE
 import cProfile
+import sys
 
 # from llll import Subprocess
 
@@ -72,7 +72,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
     observation = None
     episode_num = 0
     episode_memory = queue()
-    noise_level = random.uniform(0, 1) / 2.
+    noise_level = args.noise_level * random.uniform(0, 1) / 2.
     save_num = 0
     # validate_num = 0
     
@@ -140,13 +140,13 @@ def train(num_iterations, agent, env, evaluate, bullet):
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
-            if debug: prBlack('#{}: train_reward:{:.3f} steps:{} noise_scale:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
+            if debug: prBlack('#{}: train_reward:{:.3f} steps:{} real noise_level:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
                 .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
             writer.add_scalar('train/train_reward', episode_reward, episode)
             
             # reset
-            noise_level = random.uniform(0, 1) / 2.
+            noise_level = args.noise_level * random.uniform(0, 1) / 2.
             episode_num += 1
             observation = None
             episode_steps = 0
@@ -198,9 +198,11 @@ if __name__ == "__main__":
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
+    parser.add_argument('--noise_level', default=1, type=float, help='Level of noise to add to actions.')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--resume_num', default=1, type=int, help='Number of the weight to load. Using 1 will load actor1.pkl/critic1.pkl.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
+    parser.add_argument('--init_method', default='uniform', choices=['uniform', 'normal'], type=str, help='Initialization method of params.')
 
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--test', action='store_true', help='test or not')
@@ -210,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
     parser.add_argument('--pic_status', default=10, type=int)
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
+    parser.add_argument('--bn_affine', action='store_true', help='use BatchNorm layers with affine transformation.')
     parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
     parser.add_argument('--profile', action='store_true', help='Profile the code')
     parser.add_argument('--no_sigint', action='store_true', help='Don\'t hijack the sigint.')
@@ -223,7 +226,12 @@ if __name__ == "__main__":
     else:
         args.output = args.resume
 
+    if args.debug:
+        print('Writing to {}'.format(args.output))
+
     writer = SummaryWriter(args.output)
+    with open(os.path.join(args.output, 'cmdline.txt'), 'a') as f:
+        f.write(' '.join(sys.argv) + '\n')
 
     bullet = ("Bullet" in args.env)
     if bullet:

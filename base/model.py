@@ -4,28 +4,34 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def fanin_init(size, fanin=None):
+def fanin_init(size, fanin=None, init_method='uniform'):
     fanin = fanin or size[0]
     v = 1. / np.sqrt(fanin)
-    return torch.Tensor(size).uniform_(-v, v)
+    if init_method == 'uniform':
+        return torch.Tensor(size).uniform_(-v, v)
+    else:
+        return torch.Tensor(size).normal_(-v, v)
 
 class Actor(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False, use_bn_affine=False, init_method='uniform'):
         super(Actor, self).__init__()
-        self.use_bn = use_bn
+        self.use_bn = use_bn or use_bn_affine
         self.fc1 = nn.Linear(nb_status, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
         self.fc3 = nn.Linear(hidden2, nb_actions)
         self.selu = nn.SELU()
         self.tanh = nn.Tanh()
-        self.init_weights(init_w)
+        self.init_weights(init_w, init_method)
     
-    def init_weights(self, init_w):
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
-        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data.uniform_(-init_w, init_w)
+    def init_weights(self, init_w, init_method):
+        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size(), init_method=init_method)
+        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size(), init_method=init_method)
+        if init_method == 'uniform':
+            self.fc3.weight.data.uniform_(-init_w, init_w)
+        else:
+            self.fc3.weight.data.normal_(-init_w, init_w)
     
     def forward(self, x):
         out = self.fc1(x)
@@ -39,21 +45,24 @@ class Actor(nn.Module):
         return out
 
 class Critic(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False, use_bn_affine=False, init_method='uniform'):
         super(Critic, self).__init__()
-        self.use_bn = use_bn
+        self.use_bn = use_bn or use_bn_affine
         self.fc1 = nn.Linear(nb_status+nb_actions, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=False)
+        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, affine=False)
+        self.bn2 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
-        self.init_weights(init_w)
+        self.init_weights(init_w, init_method)
     
-    def init_weights(self, init_w):
-        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size())
-        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size())
-        self.fc3.weight.data.uniform_(-init_w, init_w)
+    def init_weights(self, init_w, init_method):
+        self.fc1.weight.data = fanin_init(self.fc1.weight.data.size(), init_method=init_method)
+        self.fc2.weight.data = fanin_init(self.fc2.weight.data.size(), init_method=init_method)
+        if init_method == 'uniform':
+            self.fc3.weight.data.uniform_(-init_w, init_w)
+        else:
+            self.fc3.weight.data.normal_(0, init_w)
     
     def forward(self, x):        
         s, a = x
