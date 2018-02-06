@@ -107,3 +107,5 @@ ENV/
 *.csv
 
 *.png
+
+*.txt

@@ -11,6 +11,8 @@ from ddpg.memory import Memory
 from ddpg.noise import *
 
 import gym
+import pybullet
+import pybullet_envs
 import tensorflow as tf
 
 
