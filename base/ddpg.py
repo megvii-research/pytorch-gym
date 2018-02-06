@@ -222,17 +222,21 @@ class DDPG(object):
 
         if decay_epsilon:
             self.epsilon -= self.depsilon
-                    
-        tmp = nn.Parameter(torch.FloatTensor(np.array([action])))
+
+        if self.use_cuda:
+            tmp = nn.Parameter(torch.FloatTensor(np.array([action])).cuda())
+        else:
+            tmp = nn.Parameter(torch.FloatTensor(np.array([action])))
         optim = Adam([tmp], lr=1e-3)
         if self.train_actions == True:
-            for i in range(20):
+            for i in range(10):
                 optim.zero_grad()
                 loss = -self.critic([
                     to_tensor(np.array([s_t])), tmp
                 ])
                 loss.backward()
                 optim.step()
+                tmp = torch.clamp(tmp, -1., 1.)
 
         Q1 = self.critic([
             to_tensor(np.array([s_t]), volatile=True), to_tensor(np.array([action]), volatile=True)
@@ -246,6 +250,7 @@ class DDPG(object):
 
         for j in range(self.nb_actions):
             action[j] = tmp[0][j]
+        action = np.clip(action, -1., 1.)
         self.a_t = action
         if return_fix:
             return action
