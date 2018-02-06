@@ -41,11 +41,14 @@ class CNN(nn.Module):
 
 
 class DDPG(object):
-    def __init__(self, nb_status, nb_actions, args):
+    def __init__(self, nb_status, nb_actions, args, writer):
         self.nb_status = nb_status * args.window_length
         self.nb_actions = nb_actions
         self.discrete = args.discrete
         self.pic = args.pic
+        self.writer = writer
+        self.select_time = 0
+        self.train_actions = args.train_actions
         if self.pic:
             self.nb_status = args.pic_status
         
@@ -204,19 +207,45 @@ class DDPG(object):
         # print(s_t.shape)
         if self.pic:
             action = to_numpy(
-                self.actor_target(s_t)
+                self.actor(s_t)
             ).squeeze(0)
         else:
             action = to_numpy(
                 self.actor(to_tensor(np.array([s_t])))
             ).squeeze(0)
+            
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
+        
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)
 
         if decay_epsilon:
             self.epsilon -= self.depsilon
+                    
+        tmp = nn.Parameter(torch.FloatTensor(np.array([action])))
+        optim = Adam([tmp], lr=1e-3)
+        if self.train_actions == True:
+            for i in range(20):
+                optim.zero_grad()
+                loss = -self.critic([
+                    to_tensor(np.array([s_t])), tmp
+                ])
+                loss.backward()
+                optim.step()
+
+        Q1 = self.critic([
+            to_tensor(np.array([s_t]), volatile=True), to_tensor(np.array([action]), volatile=True)
+        ])
+        Q2 = self.critic([
+            to_tensor(np.array([s_t]), volatile=True), tmp
+        ])
+        if self.writer != None:
+            self.writer.add_scalar('train/d_Q', (Q2 - Q1).data.cpu().numpy(), self.select_time)
+            self.select_time += 1
+
+        for j in range(self.nb_actions):
+            action[j] = tmp[0][j]
         self.a_t = action
         if return_fix:
             return action

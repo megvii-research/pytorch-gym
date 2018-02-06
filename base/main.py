@@ -204,6 +204,7 @@ if __name__ == "__main__":
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
     parser.add_argument('--init_method', default='uniform', choices=['uniform', 'normal'], type=str, help='Initialization method of params.')
 
+    parser.add_argument('--train_actions', dest='train_actions', action='store_true')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--test', action='store_true', help='test or not')
     parser.add_argument('--vis', action='store_true', help='visualize each action or not')
@@ -273,7 +274,7 @@ if __name__ == "__main__":
 #                (cameraDistance=10, cameraYaw=0, cameraPitch=-6.6, cameraTargetPosition=[10,0,0])
             env.render()
         
-    agent = DDPG(nb_status, nb_actions, args)
+    agent = DDPG(nb_status, nb_actions, args, writer)
     evaluate = Evaluator(args, bullet=bullet)
 
     def run(cmd):
