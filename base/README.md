@@ -2,7 +2,7 @@
 * requires using original FPS for training.
 
 ```bash
-python main.py --debug --env=Pendulum-v0 --action_repeat 1
+python main.py --debug --env=Pendulum-v0 --action_repeat 1 --noise_level 0
 ```
 
 ### Pong-ram-v0
