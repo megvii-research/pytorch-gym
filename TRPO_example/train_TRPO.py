@@ -3,14 +3,15 @@ from models.net_builder import *
 from basic_utils.env_wrapper import Vec_env_wrapper
 from models.agents import *
 from basic_utils.options import *
+import argparse
 
 
-def train_CartPole_TRPO(load_model=False, render=False, save_every=None, gamma=0.99, lam=0.98):
+def train_TRPO(env='HalfCheetahBulletEnv-v0', load_model=False, render=False, save_every=None, gamma=0.99, lam=0.98):
     # set seed
     torch.manual_seed(2)
 
     # set environment
-    env = Vec_env_wrapper(name='HalfCheetahBulletEnv-v0', consec_frames=4, running_stat=False)
+    env = Vec_env_wrapper(name=env, consec_frames=4, running_stat=False)
     ob_space = env.observation_space
 
     probtype = DiagGauss(env.action_space)
@@ -65,4 +66,11 @@ def train_CartPole_TRPO(load_model=False, render=False, save_every=None, gamma=0
 
 
 if __name__ == '__main__':
-    train_CartPole_TRPO()
+    parser = argparse.ArgumentParser(description='')
+
+    # arguments represent
+    parser.add_argument('--env', default='HalfCheetahBulletEnv-v0', type=str, help='open-ai gym environment')
+
+    args = parser.parse_args()
+    
+    train_TRPO(env=args.env)
