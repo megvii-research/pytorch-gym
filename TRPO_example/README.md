@@ -11,5 +11,5 @@ TRPO的一个例子，注意正确安装下面的依赖的版本.
 
 ## Run
 ```
-python train_TRPO.py --env HalfCheetahBullet-v0
+python train_TRPO.py
 ```
