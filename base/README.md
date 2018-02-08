@@ -2,7 +2,8 @@
 * requires using original FPS for training.
 
 ```bash
-python main.py --debug --env=Pendulum-v0 --action_repeat 1 --noise_level 0
+#python main.py --debug --env=Pendulum-v0 --action_repeat 1 --noise_level 0
+python main.py --debug --env=Pendulum-v0 --action_repeat 1 --noise_level 0 --batch_size 512 --cuda
 ```
 
 ### MountainCarContinuous-v0
