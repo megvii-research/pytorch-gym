@@ -11,5 +11,6 @@ PPO的一个例子，注意正确安装下面的依赖的版本.
 
 ## Run
 ```
-python train_PPO.py
+python train_clip_PPO.py --env HalfCheetahBulletEnv-v0
+python train_adapted_PPO.py --env HalfCheetahBulletEnv-v0
 ```
