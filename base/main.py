@@ -114,7 +114,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
             if step > args.warmup:
                 if episode > 0 and save_interval > 0 and episode % save_interval == 0:
                     save_num += 1
-                    if debug: prRed('[Save model] #{}'.format(save_num))
+                    if debug: prRed('[Save model] #{} in {}'.format(save_num, args.output))
                     agent.save_model(output, save_num)
                     if ace != 1:
                         ensemble.append(output, save_num)
