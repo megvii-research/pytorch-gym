@@ -8,7 +8,7 @@ class ACE:
         self.num = args.ace
         self.iter = 0
         for i in range(self.num):
-            self.ensemble.append(DDPG(nb_status, nb_actions, args))
+            self.ensemble.append(DDPG(nb_status, nb_actions, args, None))
         self.discrete = args.discrete
 
     def __call__(self, st):
