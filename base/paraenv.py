@@ -41,10 +41,14 @@ class RemoteEnv:
         self.pi.send(envname)
     def reset(self,):
         self.pi.send(('reset', None))
-        return self.pi.recv()
+        def future():
+            return self.pi.recv()
+        return future
     def step(self,action):
         self.pi.send(('step', action))
-        return self.pi.recv()
+        def future():
+            return self.pi.recv()
+        return future
 
 if __name__ == '__main__':
     import numpy,gym
@@ -54,9 +58,28 @@ if __name__ == '__main__':
     # create 16 envs in parallel
     remote_envs = [RemoteEnv(envname) for i in range(16)]
 
-    # step 10 steps in parallel on 16 envs
-    for e in remote_envs: e.reset()
-    for j in range(10):
+    # step 20 steps in parallel on 16 envs
+
+    # reset all envs and obtain first observation
+    futures = []
+    for e in remote_envs:
+        future = e.reset()
+        futures.append(future)
+
+    for future in futures:
+        obs = future()
+        print(obs)
+
+    # for 20 steps:
+    for j in range(20):
+
+        # step all 16 envs simultaneously
+        futures = []
         for e in remote_envs:
-            o,r,d,i = e.step(local_env.action_space.sample())
+            future = e.step(local_env.action_space.sample())
+            futures.append(future)
+
+        # collect results simultaneously
+        for future in futures:
+            o,r,d,i = future()
             print(o)
