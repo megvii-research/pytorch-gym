@@ -11,8 +11,6 @@ from random_process import *
 
 from util import *
 
-criterion = nn.MSELoss()
-
 class DDPG(object):
     def __init__(self, nb_status, nb_actions, args, writer):
         self.clip_actor_grad = args.clip_actor_grad
@@ -57,35 +55,16 @@ class DDPG(object):
         # 
         if self.use_cuda: self.cuda()
 
-    def normalize(self, pic):
-        pic = pic.swapaxes(0, 2).swapaxes(1, 2)
-        return pic
-
     def update_policy(self, train_actor = True):
         # Sample batch
         state_batch, action_batch, reward_batch, \
             next_state_batch, terminal_batch = self.memory.sample_batch(self.batch_size)
 
         # Prepare for the target q batch
-        if self.pic:
-            state_batch = np.array([self.normalize(x) for x in state_batch])
-            state_batch = to_tensor(state_batch, volatile=True)
-            print('label 1')
-            print('size = ', state_batch.shape)
-            state_batch = self.cnn(state_batch)
-            print('label 2')
-            next_state_batch = np.array([self.normalize(x) for x in next_state_batch])
-            next_state_batch = to_tensor(next_state_batch, volatile=True)
-            next_state_batch = self.cnn(next_state_batch)
-            next_q_values = self.critic_target([
-                next_state_batch,
-                self.actor_target(next_state_batch)
-            ])
-        else:
-            next_q_values = self.critic_target([
-                to_tensor(next_state_batch, volatile=True),
-                self.actor_target(to_tensor(next_state_batch, volatile=True)),
-            ])
+        next_q_values = self.critic_target([
+            to_tensor(next_state_batch, volatile=True),
+            self.actor_target(to_tensor(next_state_batch, volatile=True)),
+        ])
         # print('batch of picture is ok')
         next_q_values.volatile = False
 
@@ -94,33 +73,20 @@ class DDPG(object):
 
         # Critic update
         self.critic.zero_grad()
-        if self.pic: self.cnn.zero_grad()
 
-        if self.pic:
-            state_batch.volatile = False
-            q_batch = self.critic([state_batch, to_tensor(action_batch)])
-        else:
-            q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch)])
+        q_batch = self.critic([to_tensor(state_batch), to_tensor(action_batch)])
 
         # print(reward_batch, next_q_values*self.discount, target_q_batch, terminal_batch.astype(np.float))
-        value_loss = criterion(q_batch, target_q_batch)
+        value_loss = nn.MSELoss()(q_batch, target_q_batch)
         value_loss.backward()
         self.critic_optim.step()
-        if self.pic: self.cnn_optim.step()
 
         self.actor.zero_grad()
 
-        if self.pic:
-            state_batch.volatile = False
-            policy_loss = -self.critic([
-                state_batch,
-                self.actor(state_batch)
-            ])
-        else:
-            policy_loss = -self.critic([
-                to_tensor(state_batch),
-                self.actor(to_tensor(state_batch))
-            ])
+        policy_loss = -self.critic([
+            to_tensor(state_batch),
+            self.actor(to_tensor(state_batch))
+        ])
 
         policy_loss = policy_loss.mean()
         policy_loss.backward()
@@ -167,26 +133,14 @@ class DDPG(object):
     def random_action(self):
         action = np.random.uniform(-1.,1.,self.nb_actions)
         self.a_t = action
-        if self.discrete:
-            return action.argmax()
-        else:
-            return action
+        return action
 
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
-        if self.pic:
-            # print(s_t.shape)
-            s_t = self.normalize(s_t)
-            s_t = self.cnn(to_tensor(np.array([s_t])))
         self.eval()
         # print(s_t.shape)
-        if self.pic:
-            action = to_numpy(
-                self.actor(s_t)
-            ).squeeze(0)
-        else:
-            action = to_numpy(
-                self.actor(to_tensor(np.array([s_t])))
-            ).squeeze(0)
+        action = to_numpy(
+            self.actor(to_tensor(np.array([s_t])))
+        ).squeeze(0)
             
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
@@ -197,41 +151,8 @@ class DDPG(object):
         if decay_epsilon:
             self.epsilon -= self.depsilon
 
-        if self.use_cuda:
-            tmp = nn.Parameter(torch.FloatTensor(np.array([action])).cuda())
-        else:
-            tmp = nn.Parameter(torch.FloatTensor(np.array([action])))
-        optim = Adam([tmp], lr=1e-3)
-        if self.train_actions == True:
-            for i in range(10):
-                optim.zero_grad()
-                loss = -self.critic([
-                    to_tensor(np.array([s_t])), tmp
-                ])
-                loss.backward()
-                optim.step()
-                tmp = torch.clamp(tmp, -1., 1.)
-
-        Q1 = self.critic([
-            to_tensor(np.array([s_t]), volatile=True), to_tensor(np.array([action]), volatile=True)
-        ])
-        Q2 = self.critic([
-            to_tensor(np.array([s_t]), volatile=True), tmp
-        ])
-        if self.writer != None:
-            self.writer.add_scalar('train/d_Q', (Q2 - Q1).data.cpu().numpy(), self.select_time)
-            self.select_time += 1
-
-        for j in range(self.nb_actions):
-            action[j] = tmp[0][j]
-        action = np.clip(action, -1., 1.)
         self.a_t = action
-        if return_fix:
-            return action
-        if self.discrete:
-            return action.argmax()
-        else:
-            return action
+        return action
 
     def reset(self, obs):
         self.s_t = obs

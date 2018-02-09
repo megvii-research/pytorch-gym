@@ -2,69 +2,32 @@
 import random
 import numpy as np
 import argparse
-from copy import deepcopy
 import torch
 import gym
-import signal
 from normalized_env import NormalizedEnv
-# from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
-# from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
-from evaluator import Evaluator
+from multi import fastenv
 from ddpg import DDPG
 from util import *
 from tensorboardX import SummaryWriter
 from observation_processor import queue
-from multi import fastenv
 import sys
 
-# from llll import Subprocess
 
 gym.undo_logger_setup()
 
 import time
 
 
-def train(num_iterations, agent, env, evaluate, bullet):
-    fenv = fastenv(env, args.action_repeat, args.vis)
+def train(num_iterations, agent, env):
+    fenv = fastenv(env, args.action_repeat)
     window_length = args.window_length
-    validate_interval = args.validate_interval
     save_interval = args.save_interval
-    max_episode_length = args.max_episode_length // args.action_repeat
+    max_episode_length = args.max_episode_length
     debug = args.debug
-    visualize = args.vis
-    traintimes = args.traintimes
     output = args.output
-    resume = args.resume
-    ace = args.ace
-    validate_episodes = args.validate_episodes
-
-    # [optional] Actor-Critic Ensemble https://arxiv.org/pdf/1712.08987.pdf
-    if ace != 1:
-        ensemble = ACE(nb_status, nb_actions, args)
-    
-    if resume is not None:
-        print('load weight {}'.format(args.resume_num))
-        if ace != 1:
-            ensemble.load(output)
-        agent.load_weights(output, args.resume_num)
-        try:
-            agent.memory.load(output)
-        except Exception as e:
-            print(e)
-
-    def sigint_handler(signum, frame):
-        print('memory saving...'),
-        agent.memory.save(output)
-        agent.save_model(output, 0)
-        print('done')
-        exit()
-
-    if not args.no_sigint:
-        signal.signal(signal.SIGINT, sigint_handler)
 
     time_stamp = 0.
     log = 0
-    agent.is_training = True
     step = episode = episode_steps = 0
     episode_reward = 0.
     episode_rewards = []
@@ -81,27 +44,21 @@ def train(num_iterations, agent, env, evaluate, bullet):
             episode_memory.clear()
             observation = fenv.reset()
             episode_memory.append(observation)
-            observation = episode_memory.getObservation(window_length, observation, args.pic)
+            observation = episode_memory.getObservation(window_length, observation)
             agent.reset(observation)
 
         # agent pick action ...
-        if step <= args.warmup and resume is None:
+        if step <= args.warmup:
             action = agent.random_action()
         else:
             action = agent.select_action(observation, noise_level=noise_level)
             # print('step = ', step)
             
         # env response with next_observation, reward, terminate_info
-
-        # print("action = ", action)
         observation, reward, done, info = fenv.step(action)
         episode_memory.append(observation)
-        observation = episode_memory.getObservation(window_length, observation, args.pic)
+        observation = episode_memory.getObservation(window_length, observation)
         
-        # print("observation shape = ", np.shape(observation))
-        # print("observation = ", observation)
-        # print("reward = ", reward)
-        # exit()       
         # agent observe and update policy
         agent.observe(reward, observation, done)
         # update 
@@ -115,21 +72,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                     save_num += 1
                     if debug: prRed('[Save model] #{} in {}'.format(save_num, args.output))
                     agent.save_model(output, save_num)
-                    if ace != 1:
-                        ensemble.append(output, save_num)
 
-                # [optional] evaluate
-                if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
-                    validate_reward = evaluate(env, agent.select_action, debug=debug, visualize=False)
-                    if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
-                    if ace != 1 and save_num >= 1:
-                        validate_reward2 = evaluate(env, ensemble, debug=debug, visualize=False)
-                        if debug: prRed('ACE Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward2), np.var(validate_reward2)))
-#                    for i in range(validate_episodes):
-#                        validate_num += 1
-                    writer.add_scalar('validate/reward', np.mean(validate_reward), step)
-                    if ace != 1 and save_num >= 1:
-                        writer.add_scalar('validate/ACE_reward', np.mean(validate_reward2), step)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(episode_steps):
@@ -155,24 +98,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
             episode_reward = 0.
             episode += 1
 
-    if not args.no_sigint:
-        sigint_handler(0, 0)
-
-def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
-
-    if model_path is None:
-        model_path = 'output/{}-run1'.format(args.env)
-    agent.load_weights(model_path, args.resume_num)
-    if debug: prRed('load model from {}'.format(model_path))        
-    agent.is_training = False
-    agent.eval()
-    policy = lambda x: agent.select_action(x, decay_epsilon=False)
-
-    for i in range(validate_episodes):
-        validate_reward = evaluate(env, policy, window_length=window_length, visualize=visualize, debug=debug, bullet=bullet)
-        if debug: prRed('[Evaluate] #{}: mean_reward:{}'.format(i, validate_reward))
-
-
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='PyTorch on TORCS with Multi-modal')
@@ -183,7 +108,6 @@ if __name__ == "__main__":
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
     parser.add_argument('--rate', default=1e-3, type=float, help='learning rate')
     parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--crate', default=1e-4, type=float)
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.9, type=float, help='')
@@ -193,40 +117,24 @@ if __name__ == "__main__":
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     
-    parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validation')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_interval', default=10, type=int, help='how many episodes to perform a validation')
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
-    parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
     parser.add_argument('--noise_level', default=1, type=float, help='Level of noise to add to actions.')
     parser.add_argument('--clip_actor_grad', default=None, help='Clip the gradient of the actor by norm.')
-    parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
-    parser.add_argument('--resume_num', default=1, type=int, help='Number of the weight to load. Using 1 will load actor1.pkl/critic1.pkl.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
     parser.add_argument('--init_method', default='uniform', choices=['uniform', 'normal'], type=str, help='Initialization method of params.')
     parser.add_argument('--reward_window_length', default=100, type=int, help='Compute mean reward in sliding window.')
 
-    parser.add_argument('--train_actions', dest='train_actions', action='store_true')
     parser.add_argument('--debug', dest='debug', action='store_true')
     parser.add_argument('--cuda', dest='cuda', action='store_true')
-    parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
-    parser.add_argument('--pic_status', default=10, type=int)
-    parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
-    parser.add_argument('--bn_affine', action='store_true', help='use BatchNorm layers with affine transformation.')
-    parser.add_argument('--ace', default=1, type=int, help='actor critic ensemble')
-    parser.add_argument('--profile', action='store_true', help='Profile the code')
-    parser.add_argument('--no_sigint', action='store_true', help='Don\'t hijack the sigint.')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
     
     args = parser.parse_args()
 
-    if args.resume is None:
-        args.output = get_output_folder(args.output, args.env)
-    else:
-        args.output = args.resume
+    args.output = get_output_folder(args.output, args.env)
 
     if args.debug:
         print('Writing to {}'.format(args.output))
@@ -240,16 +148,7 @@ if __name__ == "__main__":
         import pybullet
         import pybullet_envs
         
-    if args.env == "KukaGym":
-        env = KukaGymEnv(renders=False, isDiscrete=True)
-    elif args.env == "LTR":
-        from osim.env import RunEnv
-        env = RunEnv(visualize=False)
-    elif args.discrete:
-        env = gym.make(args.env)
-        env = env.unwrapped
-    else:
-        env = NormalizedEnv(gym.make(args.env))
+    env = NormalizedEnv(gym.make(args.env))
 
     # input random seed
     if args.seed > 0:
@@ -266,6 +165,5 @@ if __name__ == "__main__":
     nb_actions = env.action_space.shape[0]
     
     agent = DDPG(nb_status, nb_actions, args, writer)
-    evaluate = Evaluator(args, bullet=bullet)
 
-    train(args.train_iter, agent, env, evaluate, bullet=bullet)
+    train(args.train_iter, agent, env)
