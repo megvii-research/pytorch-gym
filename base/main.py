@@ -203,6 +203,7 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
     parser.add_argument('--noise_level', default=1, type=float, help='Level of noise to add to actions.')
+    parser.add_argument('--clip_actor_grad', default=None, help='Clip the gradient of the actor by norm.')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--resume_num', default=1, type=int, help='Number of the weight to load. Using 1 will load actor1.pkl/critic1.pkl.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
