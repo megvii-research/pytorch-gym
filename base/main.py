@@ -69,6 +69,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
     agent.is_training = True
     step = episode = episode_steps = 0
     episode_reward = 0.
+    episode_rewards = []
     observation = None
     episode_num = 0
     episode_memory = queue()
@@ -140,8 +141,11 @@ def train(num_iterations, agent, env, evaluate, bullet):
                     Q, value_loss = agent.update_policy()
                     writer.add_scalar('train/Q', Q.data.cpu().numpy(), log)
                     writer.add_scalar('train/critic_loss', value_loss.data.cpu().numpy(), log)
-            if debug: prBlack('#{}: train_reward:{:.3f} steps:{} real noise_level:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
-                .format(episode,episode_reward,step,noise_level,train_time_interval,time.time()-time_stamp))
+
+            episode_rewards.append(episode_reward)
+            episode_rewards = episode_rewards[-args.reward_window_length : ]
+            if debug: prBlack('#{}: train_reward:{:.3f} mean:{:.3e} steps:{} real noise_level:{:.2f} interval_time:{:.2f} train_time:{:.2f}' \
+                .format(episode,episode_reward,np.mean(episode_rewards), step,noise_level,train_time_interval,time.time()-time_stamp))
             time_stamp = time.time()
             writer.add_scalar('train/train_reward', episode_reward, episode)
             
@@ -199,10 +203,12 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
     parser.add_argument('--traintimes', default=100, type=int, help='train times for each episode')
     parser.add_argument('--noise_level', default=1, type=float, help='Level of noise to add to actions.')
+    parser.add_argument('--clip_actor_grad', default=None, help='Clip the gradient of the actor by norm.')
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--resume_num', default=1, type=int, help='Number of the weight to load. Using 1 will load actor1.pkl/critic1.pkl.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
     parser.add_argument('--init_method', default='uniform', choices=['uniform', 'normal'], type=str, help='Initialization method of params.')
+    parser.add_argument('--reward_window_length', default=100, type=int, help='Compute mean reward in sliding window.')
 
     parser.add_argument('--train_actions', dest='train_actions', action='store_true')
     parser.add_argument('--debug', dest='debug', action='store_true')

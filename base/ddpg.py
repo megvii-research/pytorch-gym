@@ -42,6 +42,7 @@ class CNN(nn.Module):
 
 class DDPG(object):
     def __init__(self, nb_status, nb_actions, args, writer):
+        self.clip_actor_grad = args.clip_actor_grad
         self.nb_status = nb_status * args.window_length
         self.nb_actions = nb_actions
         self.discrete = args.discrete
@@ -159,6 +160,15 @@ class DDPG(object):
 
         policy_loss = policy_loss.mean()
         policy_loss.backward()
+
+        if self.clip_actor_grad is not None:
+            torch.nn.utils.clip_grad_norm(self.actor.parameters(), float(self.clip_actor_grad))
+
+            if self.writer != None:
+                mean_policy_grad = np.array(np.mean([np.linalg.norm(p.grad.data.cpu().numpy().ravel()) for p in self.actor.parameters()]))
+                #print(mean_policy_grad)
+                self.writer.add_scalar('train/mean_policy_grad', mean_policy_grad, self.select_time)
+
         if train_actor:
             self.actor_optim.step()
 
