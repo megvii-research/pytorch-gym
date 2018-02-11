@@ -22,7 +22,6 @@ def train(num_iterations, agent, env):
     fenv = fastenv(env, args.action_repeat)
     window_length = args.window_length
     save_interval = args.save_interval
-    max_episode_length = args.max_episode_length
     debug = args.debug
     output = args.output
 
@@ -64,7 +63,7 @@ def train(num_iterations, agent, env):
         step += 1
         episode_steps += 1
         episode_reward += reward
-        if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
+        if done:
             # [optional] save
             if step > args.warmup:
                 if episode > 0 and save_interval > 0 and episode % save_interval == 0:
@@ -114,7 +113,6 @@ if __name__ == "__main__":
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=4, type=int, help='repeat times for each action')
     
-    parser.add_argument('--max_episode_length', default=0, type=int, help='')
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
