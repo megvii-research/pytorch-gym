@@ -111,3 +111,5 @@ ENV/
 *.txt
 
 *.py~
+
+*.localhost

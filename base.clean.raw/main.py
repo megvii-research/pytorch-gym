@@ -5,7 +5,6 @@ import argparse
 from copy import deepcopy
 import torch
 import gym
-import signal
 from normalized_env import *
 # from pybullet_envs.bullet.racecarGymEnv import RacecarGymEnv
 # from pybullet_envs.bullet.kukaGymEnv import KukaGymEnv
@@ -42,14 +41,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
         agent.load_weights(output)
         agent.memory.load(output)
 
-    def sigint_handler(signum, frame):
-        print('memory saving...'),
-        agent.memory.save(output)
-        agent.save_model(output, 0)
-        print('done')
-        exit()
-    signal.signal(signal.SIGINT, sigint_handler)
-
     time_stamp = 0.
     log = 0
     agent.is_training = True
@@ -75,7 +66,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         if step <= args.warmup and resume is None:
             action = agent.random_action()
         else:
-            # print("observation shape:", observation.shape)
+            # print("observation shape:", observation.shape)            
             action = agent.select_action(observation, noise_level=noise_level)
             
         # env response with next_observation, reward, terminate_info
@@ -95,11 +86,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
         if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
             if step > args.warmup:
-                if episode > 0 and save_interval > 0 and episode % save_interval == 0:
-                    save_num += 1
-                    if debug: prRed('[Save model] #{}'.format(save_num))
-                    agent.save_model(output, save_num)
-
                 # [optional] evaluate
                 if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                     validate_reward = evaluate(fenv, agent.select_action, debug=debug, visualize=False)
@@ -125,8 +111,9 @@ def train(num_iterations, agent, env, evaluate, bullet):
             episode_steps = 0
             episode_reward = 0.
             episode += 1
-
-    sigint_handler(0, 0)
+            
+    if debug: prRed('[Save model] #{}'.format(save_num))
+    agent.save_model(output, save_num)
 
 def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
 

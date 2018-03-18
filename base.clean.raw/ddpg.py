@@ -206,6 +206,7 @@ class DDPG(object):
             ).squeeze(0)
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
+        
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)
 
