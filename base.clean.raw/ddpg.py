@@ -174,6 +174,7 @@ class DDPG(object):
         self.critic_target.train()
 
     def cuda(self):
+        self.cnn.cuda()
         self.actor.cuda()
         self.actor_target.cuda()
         self.critic.cuda()
@@ -192,10 +193,10 @@ class DDPG(object):
             return action
         
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
+        self.eval()
         if self.pic:
             s_t = self.normalize(s_t)
             s_t = self.cnn(to_tensor(np.array([s_t])))
-        self.eval()
         if self.pic:
             action = to_numpy(
                 self.actor_target(s_t)
@@ -241,6 +242,7 @@ class DDPG(object):
 
     def save_model(self, output, num):
         if self.use_cuda:
+            self.cnn.cpu()
             self.actor.cpu()
             self.critic.cpu()
         torch.save(
@@ -252,5 +254,6 @@ class DDPG(object):
             '{}/critic{}.pkl'.format(output, num)
         )
         if self.use_cuda:
+            self.cnn.cuda()
             self.actor.cuda()
             self.critic.cuda()
