@@ -1,5 +1,5 @@
 import numpy as np
-# preprocess raw image to 80*80 gray image
+# preprocess raw image to 84*84 gray image
 def preprocess(observation):
     import cv2
     observation = cv2.cvtColor(cv2.resize(observation, (84, 110)), cv2.COLOR_BGR2GRAY)

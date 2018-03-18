@@ -13,32 +13,21 @@ from util import *
 
 criterion = nn.MSELoss()
 
-
 class CNN(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(num_inputs, 32, 5, stride=1, padding=2)
-        self.maxp1 = nn.MaxPool2d(2, 2)
-        self.conv2 = nn.Conv2d(32, 32, 5, stride=1, padding=1)
-        self.maxp2 = nn.MaxPool2d(2, 2)
-        self.conv3 = nn.Conv2d(32, 64, 4, stride=1, padding=1)
-        self.maxp3 = nn.MaxPool2d(2, 2)
-        self.conv4 = nn.Conv2d(64, 64, 3, stride=1, padding=1)
-        self.maxp4 = nn.MaxPool2d(2, 2)
+        self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.fc = nn.Linear(num_inputs * 64 * 7 * 7, num_outputs)
+        self.activation = F.relu
 
-        self.out = nn.Linear(21888, num_outputs)
-
-    def forward(self, inputs):
-        x = F.relu(self.maxp1(self.conv1(inputs)))
-        x = F.relu(self.maxp2(self.conv2(x)))
-        x = F.relu(self.maxp3(self.conv3(x)))
-        x = F.relu(self.maxp4(self.conv4(x)))
-
-        x = x.view(x.size(0), -1)
-
-        x = self.out(x)
+    def forward(self, x):
+        x = self.activation(self.conv1(x))
+        x = self.activation(self.conv2(x))
+        x = self.activation(self.conv3(x))
+        x = self.activation(self.fc(x.view(x.size(0), -1)))
         return x
-
 
 class DDPG(object):
     def __init__(self, nb_status, nb_actions, args, writer):
@@ -48,7 +37,7 @@ class DDPG(object):
         self.discrete = args.discrete
         self.pic = args.pic
         self.writer = writer
-        self.select_time = 0
+        self.select_time = 0        
         if self.pic:
             self.nb_status = args.pic_status
         
@@ -60,7 +49,7 @@ class DDPG(object):
             'init_method':args.init_method
         }
         if args.pic:
-            self.cnn = CNN(3, args.pic_status)
+            self.cnn = CNN(4, args.pic_status)
             self.cnn_optim = Adam(self.cnn.parameters(), lr=args.crate)
         self.actor = Actor(self.nb_status, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status, self.nb_actions, **net_cfg)
@@ -104,10 +93,7 @@ class DDPG(object):
         if self.pic:
             state_batch = np.array([self.normalize(x) for x in state_batch])
             state_batch = to_tensor(state_batch, volatile=True)
-            print('label 1')
-            print('size = ', state_batch.shape)
             state_batch = self.cnn(state_batch)
-            print('label 2')
             next_state_batch = np.array([self.normalize(x) for x in next_state_batch])
             next_state_batch = to_tensor(next_state_batch, volatile=True)
             next_state_batch = self.cnn(next_state_batch)
@@ -204,59 +190,27 @@ class DDPG(object):
             return action.argmax()
         else:
             return action
-
+        
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):
         if self.pic:
-            # print(s_t.shape)
             s_t = self.normalize(s_t)
             s_t = self.cnn(to_tensor(np.array([s_t])))
         self.eval()
-        # print(s_t.shape)
         if self.pic:
             action = to_numpy(
-                self.actor(s_t)
+                self.actor_target(s_t)
             ).squeeze(0)
         else:
             action = to_numpy(
                 self.actor(to_tensor(np.array([s_t])))
             ).squeeze(0)
-            
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
-        
         action = action * (1 - noise_level) + (self.random_process.sample() * noise_level)
         action = np.clip(action, -1., 1.)
 
         if decay_epsilon:
             self.epsilon -= self.depsilon
-
-        if self.use_cuda:
-            tmp = nn.Parameter(torch.FloatTensor(np.array([action])).cuda())
-        else:
-            tmp = nn.Parameter(torch.FloatTensor(np.array([action])))
-        optim = Adam([tmp], lr=1e-3)
-        for i in range(10):
-            optim.zero_grad()
-            loss = -self.critic([
-                to_tensor(np.array([s_t])), tmp
-            ])
-            loss.backward()
-            optim.step()
-            tmp = torch.clamp(tmp, -1., 1.)
-
-        Q1 = self.critic([
-            to_tensor(np.array([s_t]), volatile=True), to_tensor(np.array([action]), volatile=True)
-        ])
-        Q2 = self.critic([
-            to_tensor(np.array([s_t]), volatile=True), tmp
-        ])
-        if self.writer != None:
-            self.writer.add_scalar('train/d_Q', (Q2 - Q1).data.cpu().numpy(), self.select_time)
-            self.select_time += 1
-
-        for j in range(self.nb_actions):
-            action[j] = tmp[0][j]
-        action = np.clip(action, -1., 1.)
         self.a_t = action
         if return_fix:
             return action

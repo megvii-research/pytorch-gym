@@ -75,6 +75,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
         if step <= args.warmup and resume is None:
             action = agent.random_action()
         else:
+            # print("observation shape:", observation.shape)
             action = agent.select_action(observation, noise_level=noise_level)
             
         # env response with next_observation, reward, terminate_info
@@ -202,7 +203,7 @@ if __name__ == "__main__":
     elif args.env == "LTR":
         from osim.env import RunEnv
         env = RunEnv(visualize=False)
-    elif args.discrete:
+    elif args.discrete:        
         env = gym.make(args.env)
         env = env.unwrapped
     else:
