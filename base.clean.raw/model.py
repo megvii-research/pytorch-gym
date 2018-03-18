@@ -13,14 +13,14 @@ def fanin_init(size, fanin=None, init_method='uniform'):
         return torch.Tensor(size).normal_(-v, v)
 
 class Actor(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False, use_bn_affine=False, init_method='uniform'):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-3, use_bn=False, init_method='uniform'):
         super(Actor, self).__init__()
-        self.use_bn = use_bn or use_bn_affine
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
+        self.use_bn = use_bn
+        self.bn1 = nn.BatchNorm1d(hidden1)
         self.fc1 = nn.Linear(nb_status, hidden1)
-        self.bn2 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
+        self.bn2 = nn.BatchNorm1d(hidden1)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn3 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
+        self.bn3 = nn.BatchNorm1d(hidden2)
         self.fc3 = nn.Linear(hidden2, nb_actions)
         self.selu = nn.SELU()
         self.tanh = nn.Tanh()
@@ -46,17 +46,17 @@ class Actor(nn.Module):
         return out
 
 class Critic(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False, use_bn_affine=False, init_method='uniform'):
+    def __init__(self, nb_status, nb_actions, hidden1=400, hidden2=300, init_w=3e-4, use_bn=False, init_method='uniform'):
         super(Critic, self).__init__()
-        self.use_bn = use_bn or use_bn_affine
+        self.use_bn = use_bn
         self.fcs = nn.Linear(nb_status, hidden1 // 2)
         self.fca = nn.Linear(nb_actions, hidden1 // 2)
-        self.bns = nn.BatchNorm1d(hidden1 // 2, affine=use_bn_affine)
-        self.bna = nn.BatchNorm1d(hidden1 // 2, affine=use_bn_affine)
+        self.bns = nn.BatchNorm1d(hidden1 // 2)
+        self.bna = nn.BatchNorm1d(hidden1 // 2)
         self.fc1 = nn.Linear(hidden1, hidden1)
-        self.bn1 = nn.BatchNorm1d(hidden1, affine=use_bn_affine)
+        self.bn1 = nn.BatchNorm1d(hidden1)
         self.fc2 = nn.Linear(hidden1, hidden2)
-        self.bn2 = nn.BatchNorm1d(hidden2, affine=use_bn_affine)
+        self.bn2 = nn.BatchNorm1d(hidden2)
         self.fc3 = nn.Linear(hidden2, 1)
         self.selu = nn.SELU()
         self.init_weights(init_w, init_method)

@@ -156,7 +156,7 @@ if __name__ == "__main__":
     parser.add_argument('--crate', default=3e-4, type=float)
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
-    parser.add_argument('--discount', default=0.96, type=float, help='')
+    parser.add_argument('--discount', default=0.99, type=float, help='')
     parser.add_argument('--batch_size', default=64, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')

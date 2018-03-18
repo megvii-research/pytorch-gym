@@ -16,10 +16,10 @@ criterion = nn.MSELoss()
 class CNN(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, kernel_size=8, stride=4)
-        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
-        self.fc = nn.Linear(num_inputs * 64 * 7 * 7, num_outputs)
+        self.conv1 = nn.Conv2d(1, 16, kernel_size=8, stride=4)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=4, stride=2)
+        self.conv3 = nn.Conv2d(32, 16, kernel_size=3, stride=1)
+        self.fc = nn.Linear(num_inputs * 16 * 7 * 7, num_outputs)
         self.activation = F.relu
 
     def forward(self, x):
