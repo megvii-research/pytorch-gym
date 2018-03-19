@@ -19,7 +19,7 @@ class Actor(nn.Module):
         self.fc1 = nn.Linear(nb_status, hidden1)
         self.fc2 = nn.Linear(hidden1, nb_actions)
         self.selu = nn.SELU()
-        self.tanh = nn.Tanh()
+        self.tanh = nn.Tanh() 
         self.init_weights(init_w, init_method)
     
     def init_weights(self, init_w, init_method):
@@ -35,6 +35,7 @@ class Actor(nn.Module):
         out = self.selu(out)
         out = self.fc2(out)
         out = self.tanh(out)
+        out = (out + 1.) / 2.
         return out
 
 class Critic(nn.Module):

@@ -53,7 +53,7 @@ class CanvasEnv:
         self.target = target
         self.target_drawn = False
         self.canvas = np.zeros(shape=target.shape, dtype='uint8') + 255
-        self.lastdiff = self.diff()
+        self.lastdiff = 0
         self.height, self.width, self.depth = self.canvas.shape
         r = self.height // 2
         white = (255, 255, 255)
@@ -63,7 +63,7 @@ class CanvasEnv:
     def diff(self):
         # calculate dDifference between two image. you can use different metrics to encourage different characteristic
         p = 255 - self.target[:, :, 0]
-        q = 255 - self.canvas[:, :, 0]
+        q = 255 - self.canvas[:, :, 0]        
         return np.sum(np.logical_and(p, q).astype(np.float32)) / np.sum(np.logical_or(p, q).astype(np.float32))
     
     def observation(self):
@@ -90,7 +90,7 @@ class CanvasEnv:
     
     def step(self, action):
         # unpack the parameters
-        x1, y1, r = [(np.clip(action[i],-1.,1.) + 1.) / 2. for i in range(self.action_dims)]        
+        x1, y1, r = [np.clip(action[i],-1.,1.) for i in range(self.action_dims)]
         sheight, swidth = self.height * 16, self.width * 16 #
         cv2.circle(
             self.canvas,
@@ -118,11 +118,14 @@ class CanvasEnv:
 if __name__ == '__main__':
     env = CanvasEnv()
     ob = env.reset()
+    tot_reward = 0.
     for step in range(2000):
         ob, reward, d, i = env.step(env.action_space.sample())
-        if step % 10 == 0:
+        env.render()
+        tot_reward += reward
+        if step % 3 == 0:
             time.sleep(1)
             cv2.imwrite(str(step) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
-            ob = env.reset()          
-        print('step {} reward {}'.format(step, reward))
-        env.render()
+            print('step {} reward {}'.format(step, tot_reward))
+            ob = env.reset()
+            tot_reward = 0
