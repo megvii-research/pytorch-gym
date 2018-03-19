@@ -21,6 +21,7 @@ class CNN(nn.Module):
         self.conv3 = nn.Conv2d(32, 16, kernel_size=3, stride=1)
         self.fc = nn.Linear(num_inputs * 16 * 7 * 7, num_outputs)
         self.activation = F.relu
+        self.init_weights()
 
     def forward(self, x):
         x = self.activation(self.conv1(x))
@@ -28,6 +29,12 @@ class CNN(nn.Module):
         x = self.activation(self.conv3(x))
         x = self.activation(self.fc(x.view(x.size(0), -1)))
         return x
+
+    def init_weights(self):
+        nn.init.kaiming_uniform(self.conv1.weight, mode='fan_in')
+        nn.init.kaiming_uniform(self.conv2.weight, mode='fan_in')
+        nn.init.kaiming_uniform(self.conv3.weight, mode='fan_in')
+        nn.init.xavier_uniform(self.fc.weight)
 
 class DDPG(object):
     def __init__(self, nb_status, nb_actions, args, writer):

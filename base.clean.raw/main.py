@@ -90,6 +90,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                 if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                     validate_reward = evaluate(fenv, agent.select_action, debug=debug, visualize=False)
                     if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
+                    writer.add_scalar('validate/reward', np.mean(validate_reward), step)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(traintimes):
@@ -138,13 +139,13 @@ if __name__ == "__main__":
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=3e-4, type=float, help='learning rate')
-    parser.add_argument('--prate', default=3e-4, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--crate', default=3e-4, type=float)
+    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
+    parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--crate', default=1e-4, type=float)
     
-    parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
+    parser.add_argument('--warmup', default=10000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.99, type=float, help='')
-    parser.add_argument('--batch_size', default=64, type=int, help='minibatch size')
+    parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=3, type=int, help='')
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
@@ -168,7 +169,7 @@ if __name__ == "__main__":
     parser.add_argument('--discrete', dest='discrete', action='store_true', help='the actions are discrete or not')
     parser.add_argument('--cuda', dest='cuda', action='store_true')
     parser.add_argument('--pic', dest='pic', action='store_true', help='picture input or not')
-    parser.add_argument('--pic_status', default=100, type=int)
+    parser.add_argument('--pic_status', default=512, type=int)
     parser.add_argument('--bn', action='store_true', help='use BatchNorm layers')
 
     parser.add_argument('--seed', default=-1, type=int, help='')
