@@ -142,9 +142,9 @@ if __name__ == "__main__":
     parser.add_argument('--env', default='CartPole-v0', type=str, help='open-ai gym environment')
     parser.add_argument('--hidden1', default=400, type=int, help='hidden num of first fully connect layer')
     parser.add_argument('--hidden2', default=300, type=int, help='hidden num of second fully connect layer')
-    parser.add_argument('--rate', default=1e-4, type=float, help='learning rate')
-    parser.add_argument('--prate', default=1e-4, type=float, help='policy net learning rate (only for DDPG)')
-    parser.add_argument('--crate', default=1e-4, type=float)
+    parser.add_argument('--rate', default=3e-4, type=float, help='learning rate')
+    parser.add_argument('--prate', default=3e-4, type=float, help='policy net learning rate (only for DDPG)')
+    parser.add_argument('--crate', default=3e-4, type=float)
     
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.9, type=float, help='')

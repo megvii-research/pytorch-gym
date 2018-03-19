@@ -40,19 +40,18 @@ def ang2point(x): # [0, 1]
 class CanvasEnv:
     def __init__(self):
         self.action_dims = ad = 3
-        self.action_space = Box(np.array([0.] * ad), np.array([1.] * ad))
+        self.action_space = Box(np.array([-1.] * ad), np.array([1.] * ad))
         self.observation_space = Box(np.zeros([84, 84, 2]), np.ones([84, 84, 2]))
         self.target_drawn = False
         self.target = circle
+        self.canvas = np.zeros(shape=self.target.shape, dtype='uint8') + 255
         self.stepnum = 0
 
     def reset(self):
         self.stepnum = 0
-        target = circle #load_random_image()
         # target should be a 3-channel colored image of shape (H,W,3) in uint8
-        self.target = target
         self.target_drawn = False
-        self.canvas = np.zeros(shape=target.shape, dtype='uint8') + 255
+        self.canvas = np.zeros(shape=self.target.shape, dtype='uint8') + 255
         self.lastdiff = 0
         self.height, self.width, self.depth = self.canvas.shape
         r = self.height // 2
@@ -87,15 +86,15 @@ class CanvasEnv:
             cv2.LINE_8, # antialiasing
             4 # rightshift bits
         )        
-    
+        
     def step(self, action):
         # unpack the parameters
-        x1, y1, r = [np.clip(action[i],-1.,1.) for i in range(self.action_dims)]
+        x1, y1, r = [(np.clip(action[i],-1.,1.) + 1.) / 2. for i in range(self.action_dims)]
         sheight, swidth = self.height * 16, self.width * 16 #
         cv2.circle(
             self.canvas,
             (int(x1*swidth),int(y1*sheight)),
-            int(r**2*swidth*0.2+4*16),
+            int(r*swidth/4.),
             (0,0,0),
             -1,
             cv2.LINE_AA,

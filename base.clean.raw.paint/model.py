@@ -35,7 +35,6 @@ class Actor(nn.Module):
         out = self.selu(out)
         out = self.fc2(out)
         out = self.tanh(out)
-        out = (out + 1.) / 2.
         return out
 
 class Critic(nn.Module):
