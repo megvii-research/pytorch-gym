@@ -61,17 +61,15 @@ class CanvasEnv:
         return self.observation()
     
     def diff(self):
-        # calculate difference between two image. you can use different metrics to encourage different characteristics.
-        se = (self.target.astype('float32') - self.canvas.astype('float32'))**2
-        mse = np.mean(se)/255.
-        return mse
+        # calculate dDifference between two image. you can use different metrics to encourage different characteristic
+        p = self.target[:, :, 0]
+        q = self.canvas[:, :, 0]
+        return 2 * np.sum(np.logical_and(p, q).astype(np.float32)) / np.sum(np.logical_or(p, q).astype(np.float32))
     
     def observation(self):
-        ob = np.empty([84, 84, 2])
-        for x in range(84):
-            for y in range(84):
-                ob[x, y, 0] = (self.target[y, x, 0] == 0)
-                ob[x, y, 1] = (self.canvas[y, x, 0] == 0)
+        p = self.target[:, :, 0]
+        q = self.canvas[:, :, 0]
+        ob = np.stack(np.array([p, q]), axis=2)
         return ob #np.array(self.target), np.array(self.canvas)
 
     def draw(self, x1, y1, ang):
