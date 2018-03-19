@@ -108,6 +108,11 @@ class CanvasEnv:
         reward = diff - self.lastdiff # reward is positive if diff increased
         self.lastdiff = diff
 
+        # M = cv2.getRotationMatrix2D((self.height / 2., self.width / 2.), 90, 1.)
+        # self.canvas = cv2.warpAffine(self.canvas, M, (self.height, self.width))
+        # self.target = cv2.warpAffine(self.target, M, (self.height, self.width))
+        self.canvas = np.stack(np.rot90(self.canvas))
+        self.target = np.stack(np.rot90(self.target))
         self.stepnum += 1
         return self.observation(), reward, (self.stepnum >= 5), None # o,r,d,i
 
