@@ -62,9 +62,9 @@ class CanvasEnv:
     
     def diff(self):
         # calculate dDifference between two image. you can use different metrics to encourage different characteristic
-        p = self.target[:, :, 0]
-        q = self.canvas[:, :, 0]
-        return 2 * np.sum(np.logical_and(p, q).astype(np.float32)) / np.sum(np.logical_or(p, q).astype(np.float32))
+        p = 255 - self.target[:, :, 0]
+        q = 255 - self.canvas[:, :, 0]
+        return np.sum(np.logical_and(p, q).astype(np.float32)) / np.sum(np.logical_or(p, q).astype(np.float32))
     
     def observation(self):
         p = self.target[:, :, 0]
@@ -103,7 +103,7 @@ class CanvasEnv:
         )
         # calculate reward
         diff = self.diff()
-        reward = self.lastdiff - diff # reward is positive if diff decreased
+        reward = diff - self.lastdiff # reward is positive if diff increased
         self.lastdiff = diff
 
         self.stepnum += 1
