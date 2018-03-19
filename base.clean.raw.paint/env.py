@@ -91,13 +91,16 @@ class CanvasEnv:
         # unpack the parameters
         x1, y1, r = [(np.clip(action[i],-1.,1.) + 1.) / 2. for i in range(self.action_dims)]
         sheight, swidth = self.height * 16, self.width * 16 #
-        cv2.circle(
+        r = r*swidth/4.
+        x1 = x1*swidth
+        y1 = y1*sheight
+        cv2.rectangle(
             self.canvas,
-            (int(x1*swidth),int(y1*sheight)),
-            int(r*swidth/4.),
+            (int(x1-r),int(y1-r)),
+            (int(x1+r),int(y1+r)),
             (0,0,0),
             -1,
-            cv2.LINE_AA,
+            cv2.LINE_8,
             4
         )
         # calculate reward
@@ -122,7 +125,7 @@ if __name__ == '__main__':
         ob, reward, d, i = env.step(env.action_space.sample())
         env.render()
         tot_reward += reward
-        if step % 3 == 0:
+        if step % 5 == 0:
             time.sleep(1)
             cv2.imwrite(str(step) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
             print('step {} reward {}'.format(step, tot_reward))
