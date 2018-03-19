@@ -52,7 +52,7 @@ class CanvasEnv:
         # target should be a 3-channel colored image of shape (H,W,3) in uint8
         self.target_drawn = False
         self.canvas = np.zeros(shape=self.target.shape, dtype='uint8') + 255
-        self.lastdiff = 0
+        self.lastdiff = self.diff()
         self.height, self.width, self.depth = self.canvas.shape
         r = self.height // 2
         white = (255, 255, 255)
@@ -61,9 +61,11 @@ class CanvasEnv:
     
     def diff(self):
         # calculate dDifference between two image. you can use different metrics to encourage different characteristic
-        p = 255 - self.target[:, :, 0]
-        q = 255 - self.canvas[:, :, 0]        
-        return np.sum(np.logical_and(p, q).astype(np.float32)) / np.sum(np.logical_or(p, q).astype(np.float32))
+        ans = 0.
+        ans2 = 0.
+        p = self.target[:, :, 0].astype('float32')
+        q = self.canvas[:, :, 0].astype('float32')
+        return np.sum(((p - q) / 255.) ** 2) / 84. / 84.
     
     def observation(self):
         p = self.target[:, :, 0]
@@ -105,16 +107,13 @@ class CanvasEnv:
         )
         # calculate reward
         diff = self.diff()
-        reward = diff - self.lastdiff # reward is positive if diff increased
-        self.lastdiff = diff
-
-        # M = cv2.getRotationMatrix2D((self.height / 2., self.width / 2.), 90, 1.)
-        # self.canvas = cv2.warpAffine(self.canvas, M, (self.height, self.width))
-        # self.target = cv2.warpAffine(self.target, M, (self.height, self.width))
+        reward = self.lastdiff - diff # reward is positive if diff increased
+        self.lastdiff = diff        
+        self.stepnum += 1
+        ob = self.observation()
         self.canvas = np.stack(np.rot90(self.canvas))
         self.target = np.stack(np.rot90(self.target))
-        self.stepnum += 1
-        return self.observation(), reward, (self.stepnum >= 5), None # o,r,d,i
+        return ob, reward, (self.stepnum >= 5), None # o,r,d,i
 
     def render(self):
         if self.target_drawn == False:
@@ -130,7 +129,7 @@ if __name__ == '__main__':
         ob, reward, d, i = env.step(env.action_space.sample())
         env.render()
         tot_reward += reward
-        if step % 5 == 0:
+        if step % 1 == 0:
             time.sleep(1)
             cv2.imwrite(str(step) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
             print('step {} reward {}'.format(step, tot_reward))
