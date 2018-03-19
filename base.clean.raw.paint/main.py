@@ -86,14 +86,15 @@ def train(num_iterations, agent, env, evaluate, bullet):
         episode_reward += reward
         if (done or (episode_steps >= max_episode_length and max_episode_length)): # end of episode
             # [optional] save
-            if args.env == "Paint":
-                cv2.imwrite('output/' + str(episode) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
+            # if args.env == "Paint":
+                # writer.add_image(str(episode) + '.png', env.canvas)       
             if step > args.warmup:
                 # [optional] evaluate
                 if episode > 0 and validate_interval > 0 and episode % validate_interval == 0:
                     validate_reward = evaluate(fenv, agent.select_action, debug=debug, visualize=False)
                     if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
                     writer.add_scalar('validate/reward', np.mean(validate_reward), step)
+                    writer.add_image(str(step) + '.png', env.canvas)
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(traintimes):
@@ -120,7 +121,6 @@ def train(num_iterations, agent, env, evaluate, bullet):
     agent.save_model(output, save_num)
 
 def test(validate_episodes, agent, env, evaluate, model_path, window_length, visualize=True, debug=False, bullet=False):
-
     if model_path is None:
         model_path = 'output/{}-run1'.format(args.env)
     agent.load_weights(model_path)
@@ -193,6 +193,7 @@ if __name__ == "__main__":
     if args.env == "Paint":
         from env import CanvasEnv
         env = CanvasEnv()
+        writer.add_image('circle.png', env.target)
     elif args.env == "KukaGym":
         env = KukaGymEnv(renders=False, isDiscrete=True)
     elif args.env == "LTR":

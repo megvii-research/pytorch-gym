@@ -15,15 +15,15 @@ from cv2tools import vis,filt
 import gym
 from gym.spaces import Box
 
-lena = cv2.imread('circle.png').astype('uint8') #saves space
-smaller_lena = cv2.resize(lena, dsize=(84, 84), interpolation=cv2.INTER_CUBIC)
+circle = cv2.imread('circle.png').astype('uint8') #saves space
+circle = cv2.resize(circle, dsize=(84, 84), interpolation=cv2.INTER_CUBIC)
 
 def load_random_image():
     # load a random image and return. byref is preferred.
     # here we return the same image everytime.
     bias = np.random.uniform(size=(1,1,3))*0.3
     gain = np.random.uniform(size=(1,1,3))*0.7 + 0.7
-    randomized_lena = np.clip(smaller_lena * gain + bias, 0, 255).astype('uint8')
+    randomized_lena = np.clip(circle * gain + bias, 0, 255).astype('uint8')
     return randomized_lena
 
 def ang2point(x): # [0, 1]
@@ -43,11 +43,12 @@ class CanvasEnv:
         self.action_space = Box(np.array([0.] * ad), np.array([1.] * ad))
         self.observation_space = Box(np.zeros([84, 84, 2]), np.ones([84, 84, 2]))
         self.target_drawn = False
+        self.target = circle
         self.stepnum = 0
 
     def reset(self):
         self.stepnum = 0
-        target = smaller_lena #load_random_image()
+        target = circle #load_random_image()
         # target should be a 3-channel colored image of shape (H,W,3) in uint8
         self.target = target
         self.target_drawn = False
