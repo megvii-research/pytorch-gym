@@ -39,7 +39,7 @@ def ang2point(x): # [0, 1]
 
 class CanvasEnv:
     def __init__(self):
-        self.action_dims = ad = 2
+        self.action_dims = ad = 90
         self.action_space = Box(np.array([-1.] * ad), np.array([1.] * ad))
         self.observation_space = Box(np.zeros([84, 84, 2]), np.ones([84, 84, 2]))
         self.target_drawn = False
@@ -73,48 +73,40 @@ class CanvasEnv:
         ob = np.stack(np.array([p, q]), axis=2)
         return ob #np.array(self.target), np.array(self.canvas)
 
-    def draw(self, x1, y1, ang):
-        if np.square(x1 - 0.5) + np.square(y1 - 0.5) > 0.25:
-            return
-        x2, y2 = ang2point(ang)
-        r = self.height / 2
-        sheight, swidth = r * 32, r * 32 # leftshift bits        
-        cv2.line(
-            self.canvas,
-            (int(x1 * swidth), int(y1 * sheight)),
-            (int(x2 * swidth), int(y2 * sheight)),
-            (0, 0, 0), # black
-            1,
-            cv2.LINE_8, # antialiasing
-            4 # rightshift bits
-        )        
-        
-    def step(self, action):
-        # unpack the parameters
-        x1, y1 = [(np.clip(action[i],-1.,1.) + 1.) / 2. for i in range(self.action_dims)]
-        sheight, swidth = self.height * 16, self.width * 16 #
-        r = 0.5*swidth/4.
-        x1 = x1*swidth
-        y1 = y1*sheight
+    def draw(self, x, y, r):
+        x = x * 16
+        y = y * 16
+        r = r * 16
         cv2.rectangle(
             self.canvas,
-            (int(x1-r),int(y1-r)),
-            (int(x1+r),int(y1+r)),
+            (int(x),int(y)),
+            (int(x+r),int(y+r)),
             (0,0,0),
             -1,
             cv2.LINE_8,
             4
         )
-        # calculate reward
+
+    def step(self, action):
+        x = np.argmax(action[:84])
+        r = (np.argmax(action[84:]) - 1)
+        if r < 0:
+            r = 0
+        else:
+            r = 2 ** r
+        for i in range(84):
+            if(self.canvas[i, x, 0] == 255):                
+                self.draw(x, i, r)
+                break
         diff = self.diff()
         reward = self.lastdiff - diff # reward is positive if diff increased
-        self.lastdiff = diff        
+        self.lastdiff = diff
         self.stepnum += 1
         ob = self.observation()
-        self.canvas = np.stack(np.rot90(self.canvas))
-        self.target = np.stack(np.rot90(self.target))
-        return ob, reward, (self.stepnum >= 5), None # o,r,d,i
-
+        # self.canvas = np.stack(np.rot90(self.canvas))
+        # self.target = np.stack(np.rot90(self.target))
+        return ob, reward, (self.stepnum >= 20), None # o,r,d,i
+    
     def render(self):
         if self.target_drawn == False:
             vis.show_autoscaled(self.target,limit=300,name='target')
@@ -127,10 +119,11 @@ if __name__ == '__main__':
     tot_reward = 0.
     for step in range(2000):
         ob, reward, d, i = env.step(env.action_space.sample())
+        time.sleep(1)
         env.render()
         tot_reward += reward
-        if step % 1 == 0:
-            time.sleep(1)
+        if step % 100 == 0:
+            time.sleep(2)
             cv2.imwrite(str(step) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
             print('step {} reward {}'.format(step, tot_reward))
             ob = env.reset()
