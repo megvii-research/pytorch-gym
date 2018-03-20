@@ -26,13 +26,6 @@ def load_random_image():
     randomized_lena = np.clip(circle * gain + bias, 0, 255).astype('uint8')
     return randomized_lena
 
-def ang2point(x): # [0, 1]
-    r = 0.5
-    alpha = x * np.pi * 2 - np.pi
-    px = r + r * np.sin(alpha)
-    py = r - r * np.cos(alpha)
-    return px, py
-
 # Environment Specification
 # observation: tuple(image, image)
 # action: Box(3) clamped to [0,1]
@@ -89,23 +82,25 @@ class CanvasEnv:
 
     def step(self, action):
         x = np.argmax(action[:84])
-        r = (np.argmax(action[84:]) - 1)
+        r = (np.argmax(action[84:]) - 1)        
         if r < 0:
             r = 0
         else:
             r = 2 ** r
-        for i in range(84):
-            if(self.canvas[i, x, 0] == 255):                
-                self.draw(x, i, r)
-                break
+        pic = self.canvas[:, :, 0]
+        if (r != 0):
+            for i in range(84):
+                if(np.sum(pic[i, x : x + r + 1])):
+                    self.draw(x, i, r)
+                    break
         diff = self.diff()
         reward = self.lastdiff - diff # reward is positive if diff increased
         self.lastdiff = diff
         self.stepnum += 1
         ob = self.observation()
-        # self.canvas = np.stack(np.rot90(self.canvas))
-        # self.target = np.stack(np.rot90(self.target))
-        return ob, reward, (self.stepnum >= 20), None # o,r,d,i
+#        self.canvas = np.stack(np.rot90(self.canvas))
+#        self.target = np.stack(np.rot90(self.target))
+        return ob, reward, (self.stepnum >= 50), None # o,r,d,i
     
     def render(self):
         if self.target_drawn == False:
@@ -119,8 +114,8 @@ if __name__ == '__main__':
     tot_reward = 0.
     for step in range(2000):
         ob, reward, d, i = env.step(env.action_space.sample())
-        time.sleep(1)
         env.render()
+        time.sleep(0.1)
         tot_reward += reward
         if step % 100 == 0:
             time.sleep(2)
