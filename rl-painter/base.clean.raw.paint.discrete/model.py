@@ -36,10 +36,10 @@ class Actor(nn.Module):
         out = self.fc1(x)
         out = self.selu(out)
         out = self.fc2(out)
-        out1 = (out.data.numpy())[:, :84]
-        out2 = (out.data.numpy())[:, 84:]
-        out1 = torch.autograd.Variable(torch.Tensor(out1))
-        out2 = torch.autograd.Variable(torch.Tensor(out2))
+        out1 = (out.cpu().data.numpy())[:, :84]
+        out2 = (out.cpu().data.numpy())[:, 84:]
+        out1 = torch.autograd.Variable(torch.Tensor(out1)).cuda()
+        out2 = torch.autograd.Variable(torch.Tensor(out2)).cuda()
         out1 = self.softmax(out1)
         out2 = self.softmax(out2)
         out = (torch.cat([out1, out2], 1))
