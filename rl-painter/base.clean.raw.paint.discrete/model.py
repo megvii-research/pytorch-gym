@@ -3,6 +3,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.autograd import Variable
 
 def fanin_init(size, fanin=None, init_method='uniform'):
     fanin = fanin or size[0]
@@ -19,6 +20,7 @@ class Actor(nn.Module):
         self.fc1 = nn.Linear(nb_status, hidden1)
         self.fc2 = nn.Linear(hidden1, nb_actions)
         self.selu = nn.SELU()
+        self.softmax = nn.Softmax(dim=1)
         self.tanh = nn.Tanh() 
         self.init_weights(init_w, init_method)
     
@@ -34,7 +36,13 @@ class Actor(nn.Module):
         out = self.fc1(x)
         out = self.selu(out)
         out = self.fc2(out)
-        out = self.tanh(out)
+        out1 = (out.data.numpy())[:, :84]
+        out2 = (out.data.numpy())[:, 84:]
+        out1 = torch.autograd.Variable(torch.Tensor(out1))
+        out2 = torch.autograd.Variable(torch.Tensor(out2))
+        out1 = self.softmax(out1)
+        out2 = self.softmax(out2)
+        out = (torch.cat([out1, out2], 1))
         return out
 
 class Critic(nn.Module):

@@ -13,6 +13,11 @@ from util import *
 
 criterion = nn.MSELoss()
 
+def softmax(x):
+    exp_x = np.exp(x)
+    softmax_x = exp_x / np.sum(exp_x)
+    return softmax_x 
+
 class CNN(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(CNN, self).__init__()
@@ -193,6 +198,7 @@ class DDPG(object):
 
     def random_action(self):
         action = np.random.uniform(-1.,1.,self.nb_actions)
+        action = np.concatenate((softmax(action[:84]), softmax(action[84:])))
         self.a_t = action
         if self.discrete:
             return action.argmax()
