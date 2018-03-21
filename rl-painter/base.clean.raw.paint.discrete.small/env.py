@@ -68,6 +68,9 @@ class CanvasEnv:
         return ob # np.array(self.target), np.array(self.canvas)
 
     def draw(self, x, y, r):
+        if(r == 1):
+            self.canvas[y, x] = (0, 0, 0)
+            return
         x = x * 16
         y = y * 16
         r = r * 16
