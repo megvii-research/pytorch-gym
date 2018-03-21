@@ -82,8 +82,8 @@ class CanvasEnv:
 
     def step(self, action):
         x = np.argmax(action[:84])
-        r = (np.argmax(action[84:]) - 1)        
-        if r < 0:
+        r = (np.argmax(action[84:]))
+        if r == 0:
             r = 0
         else:
             r = 2 ** r
@@ -100,7 +100,7 @@ class CanvasEnv:
         ob = self.observation()
 #        self.canvas = np.stack(np.rot90(self.canvas))
 #        self.target = np.stack(np.rot90(self.target))
-        return ob, reward, (self.stepnum >= 50), None # o,r,d,i
+        return ob, reward, (self.stepnum >= 20), None # o,r,d,i
     
     def render(self):
         if self.target_drawn == False:
@@ -117,7 +117,7 @@ if __name__ == '__main__':
         env.render()
         time.sleep(0.1)
         tot_reward += reward
-        if step % 100 == 0:
+        if step % 20 == 0:
             time.sleep(2)
             cv2.imwrite(str(step) + '.png', env.canvas, [int(cv2.IMWRITE_PNG_COMPRESSION), 0])
             print('step {} reward {}'.format(step, tot_reward))

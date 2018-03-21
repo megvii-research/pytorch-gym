@@ -62,6 +62,7 @@ class DDPG(object):
         }
         if args.pic:
             self.cnn = CNN(1, args.pic_status)
+            self.cnn_target = CNN(1, args.pic_status)
             self.cnn_optim = Adam(self.cnn.parameters(), lr=args.crate)
         self.actor = Actor(self.nb_status, self.nb_actions, **net_cfg)
         self.actor_target = Actor(self.nb_status, self.nb_actions, **net_cfg)
@@ -73,6 +74,8 @@ class DDPG(object):
 
         hard_update(self.actor_target, self.actor) # Make sure target is with the same weight
         hard_update(self.critic_target, self.critic)
+        if args.pic:
+            hard_update(self.cnn_target, self.cnn)
         
         #Create replay buffer
         self.memory = rpm(args.rmsize) # SequentialMemory(limit=args.rmsize, window_length=args.window_length)
@@ -108,7 +111,7 @@ class DDPG(object):
             state_batch = self.cnn(state_batch)
             next_state_batch = np.array([self.normalize(x) for x in next_state_batch])
             next_state_batch = to_tensor(next_state_batch, volatile=True)
-            next_state_batch = self.cnn(next_state_batch)
+            next_state_batch = self.cnn_target(next_state_batch)
             next_q_values = self.critic_target([
                 next_state_batch,
                 self.actor_target(next_state_batch)
@@ -170,6 +173,8 @@ class DDPG(object):
         # Target update
         soft_update(self.actor_target, self.actor, self.tau)
         soft_update(self.critic_target, self.critic, self.tau)
+        if self.pic:
+            soft_update(self.cnn_target, self.cnn, self.tau)
 
         return -policy_loss, value_loss
 
@@ -178,15 +183,22 @@ class DDPG(object):
         self.actor_target.eval()
         self.critic.eval()
         self.critic_target.eval()
+        if(self.pic):
+            self.cnn.eval()
+            self.cnn_target.eval()
 
     def train(self):
         self.actor.train()
         self.actor_target.train()
         self.critic.train()
         self.critic_target.train()
+        if(self.pic):
+            self.cnn.eval()
+            self.cnn_target.eval()
 
     def cuda(self):
         self.cnn.cuda()
+        self.cnn_target.cuda()
         self.actor.cuda()
         self.actor_target.cuda()
         self.critic.cuda()
@@ -256,6 +268,7 @@ class DDPG(object):
     def save_model(self, output, num):
         if self.use_cuda:
             self.cnn.cpu()
+            self.cnn_target.cpu()
             self.actor.cpu()
             self.critic.cpu()
         torch.save(
@@ -268,5 +281,6 @@ class DDPG(object):
         )
         if self.use_cuda:
             self.cnn.cuda()
+            self.cnn_target.cuda()
             self.actor.cuda()
             self.critic.cuda()
