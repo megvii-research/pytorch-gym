@@ -37,6 +37,7 @@ class Actor(nn.Module):
         out = self.fc1(x)
         out = self.selu(out)
         out = self.fc2(out)
+        return self.tanh(out)
         out1 = (out.cpu().data.numpy())[:, :10]
         out2 = (out.cpu().data.numpy())[:, 10:]
         out1 = torch.autograd.Variable(torch.Tensor(out1)).cuda()

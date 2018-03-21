@@ -21,10 +21,10 @@ def softmax(x):
 class CNN(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(2, 16, kernel_size=3, stride=1)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=2, stride=1)
+        self.conv1 = nn.Conv2d(2, 64, kernel_size=2, stride=1)
+        self.conv2 = nn.Conv2d(64, 32, kernel_size=2, stride=1)
         self.conv3 = nn.Conv2d(32, 8, kernel_size=2, stride=1)
-        self.fc = nn.Linear(num_inputs * 8 * 36, num_outputs)
+        self.fc = nn.Linear(num_inputs * 169 * 8, num_outputs)
         self.activation = F.relu
         self.init_weights()
 
@@ -216,7 +216,7 @@ class DDPG(object):
         if self.discrete and fix == False:
             action = action.argmax()
         if self.pic:
-            action = np.concatenate((softmax(action[:10]), softmax(action[10:])))
+            action = np.concatenate((softmax(action[:16]), softmax(action[16:])))
         return action
         
     def select_action(self, s_t, decay_epsilon=True, return_fix=False, noise_level=0):

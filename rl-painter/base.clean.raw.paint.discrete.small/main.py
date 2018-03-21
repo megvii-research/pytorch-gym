@@ -157,7 +157,7 @@ if __name__ == "__main__":
     
     parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validation')
     parser.add_argument('--max_episode_length', default=0, type=int, help='')
-    parser.add_argument('--validate_interval', default=10, type=int, help='how many episodes to perform a validation')
+    parser.add_argument('--validate_interval', default=100, type=int, help='how many episodes to perform a validation')
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')

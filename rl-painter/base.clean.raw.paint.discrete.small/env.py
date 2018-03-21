@@ -15,7 +15,7 @@ from cv2tools import vis,filt
 import gym
 from gym.spaces import Box
 
-image_width = 10
+image_width = 16
 circle = cv2.imread('circle.png').astype('uint8') #saves space
 circle = cv2.resize(circle, dsize=(image_width, image_width), interpolation=cv2.INTER_CUBIC)
 
@@ -33,7 +33,7 @@ def load_random_image():
 
 class CanvasEnv:
     def __init__(self):
-        self.action_dims = ad = image_width + 3
+        self.action_dims = ad = image_width + 4
         self.action_space = Box(np.array([-1.] * ad), np.array([1.] * ad))
         self.observation_space = Box(np.zeros([image_width, image_width, 2]), np.ones([image_width, image_width, 2]))
         self.target_drawn = False
@@ -84,12 +84,9 @@ class CanvasEnv:
     def step(self, action):
         x = np.argmax(action[:image_width])
         r = (np.argmax(action[image_width:]) - 1)
-        if r == -1:
-            r = 0
-        else:
-            r = 2 ** r
         pic = self.canvas[:, :, 0]
-        if (r != 0):
+        if (r != -1):
+            r = 2 ** r
             for i in range(image_width):
                 if(np.sum(pic[i, x : x + r + 1])):
                     self.draw(x, i, r)
@@ -99,9 +96,9 @@ class CanvasEnv:
         self.lastdiff = diff
         self.stepnum += 1
         ob = self.observation()
-        self.canvas = np.stack(np.rot90(self.canvas))
-        self.target = np.stack(np.rot90(self.target))
-        return ob, reward, (self.stepnum >= 10), None # o,r,d,i
+        # self.canvas = np.stack(np.rot90(self.canvas))
+        # self.target = np.stack(np.rot90(self.target))
+        return ob, reward, (self.stepnum >= 20), None # o,r,d,i
     
     def render(self):
         if self.target_drawn == False:
