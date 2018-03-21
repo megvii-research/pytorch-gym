@@ -33,7 +33,7 @@ def load_random_image():
 
 class CanvasEnv:
     def __init__(self):
-        self.action_dims = ad = image_width + 5
+        self.action_dims = ad = image_width + 3
         self.action_space = Box(np.array([-1.] * ad), np.array([1.] * ad))
         self.observation_space = Box(np.zeros([image_width, image_width, 2]), np.ones([image_width, image_width, 2]))
         self.target_drawn = False
@@ -65,7 +65,6 @@ class CanvasEnv:
         p = self.target[:, :, 0].astype('float32') / 255
         q = self.canvas[:, :, 0].astype('float32') / 255
         ob = np.stack(np.array([p, q]), axis=2)
-        print(p, q)
         return ob # np.array(self.target), np.array(self.canvas)
 
     def draw(self, x, y, r):
@@ -84,8 +83,8 @@ class CanvasEnv:
 
     def step(self, action):
         x = np.argmax(action[:image_width])
-        r = (np.argmax(action[image_width:]))
-        if r == 0:
+        r = (np.argmax(action[image_width:]) - 1)
+        if r == -1:
             r = 0
         else:
             r = 2 ** r
@@ -100,8 +99,8 @@ class CanvasEnv:
         self.lastdiff = diff
         self.stepnum += 1
         ob = self.observation()
-#        self.canvas = np.stack(np.rot90(self.canvas))
-#        self.target = np.stack(np.rot90(self.target))
+        self.canvas = np.stack(np.rot90(self.canvas))
+        self.target = np.stack(np.rot90(self.target))
         return ob, reward, (self.stepnum >= 10), None # o,r,d,i
     
     def render(self):

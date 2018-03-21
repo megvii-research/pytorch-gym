@@ -14,8 +14,9 @@ def fanin_init(size, fanin=None, init_method='uniform'):
         return torch.Tensor(size).normal_(-v, v)
 
 class Actor(nn.Module):
-    def __init__(self, nb_status, nb_actions, hidden1, hidden2, init_w=3e-3, use_bn=False, init_method='uniform'):
+    def __init__(self, nb_status, nb_actions, hidden1, hidden2, init_w=3e-3, use_bn=False, use_cuda=False, init_method='uniform'):
         super(Actor, self).__init__()
+        self.use_cuda = use_cuda
         self.use_bn = use_bn
         self.fc1 = nn.Linear(nb_status, hidden1)
         self.fc2 = nn.Linear(hidden1, nb_actions)

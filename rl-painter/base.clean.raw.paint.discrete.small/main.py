@@ -152,7 +152,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
     parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
-    parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
+    parser.add_argument('--tau', default=0.001, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=1, type=int, help='repeat times for each action')
     
     parser.add_argument('--validate_episodes', default=1, type=int, help='how many episode to perform during validation')

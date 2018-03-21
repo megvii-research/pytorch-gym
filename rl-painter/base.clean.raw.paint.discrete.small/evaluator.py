@@ -32,7 +32,6 @@ class Evaluator(object):
             done = False
             while not done and (episode_steps <= self.max_episode_length or not self.max_episode_length):
                 action = policy(observation)
-                print(action)
                 observation, reward, done, info = env.step(action)
                 episode_memory.append(observation)
                 observation = episode_memory.getObservation(self.window_length, observation, self.pic)
