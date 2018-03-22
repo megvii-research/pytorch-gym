@@ -234,9 +234,9 @@ class DDPG(object):
             ).squeeze(0)
         self.train()
         noise_level = noise_level * max(self.epsilon, 0)
-        
+
         if np.random.uniform(0, 1) < noise_level:
-            action = self.random_action(fix=True) # episilon greedy
+            action = (action + self.random_action(fix=True)) / 2. # episilon greedy
 
         if decay_epsilon:
             self.epsilon -= self.depsilon

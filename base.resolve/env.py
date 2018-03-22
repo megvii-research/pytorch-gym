@@ -59,9 +59,10 @@ class CanvasEnv:
     
     def diff(self):
         # calculate dDifference between two image. you can use different metrics to encourage different characteristic
-        p = 1 - (self.target[:, :, 0].astype('uint8') / 255)
-        q = 1 - (self.canvas[:, :, 0].astype('uint8') / 255)
-        return np.sum(np.logical_xor(p, q).astype('uint8')) / image_width / image_width
+        p = self.target[:, :, 0].astype('float32')
+        q = self.canvas[:, :, 0].astype('float32')
+        return np.sum((p - q) ** 2)
+        # return np.sum(np.logical_xor(p, q).astype('uint8')) / image_width / image_width
     
     def observation(self):
         p = self.target[:, :, 0].astype('uint8') / 255
