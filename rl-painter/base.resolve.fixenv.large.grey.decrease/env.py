@@ -71,9 +71,11 @@ class CanvasEnv:
         x, y = np.split(action, 2)
         g = x * (y.reshape(image_width, 1)).astype('float64')
         color = 255.
-        g = g * color / 32.
+        g = g * color / 8.
         g = np.minimum(g, self.canvas)
-        g = np.maximum(g, 255 - self.canvas)
+        g = np.maximum(g, self.canvas - 255)
+        # 255 >= c - g >= 0
+        # c >= g && g >= c - 255        
         self.canvas -= g.astype('uint8')
         diff = self.diff()
         reward = (self.lastdiff - diff) / self.rewardscale # reward is positive if diff increased
