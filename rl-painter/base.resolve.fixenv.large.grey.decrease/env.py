@@ -15,7 +15,7 @@ from cv2tools import vis,filt
 import gym
 from gym.spaces import Box
 
-image_width = 32
+image_width = 16
 max_step = 50
 circle = cv2.imread('circle.png').astype('uint8') #saves space
 circle = cv2.resize(circle, dsize=(image_width, image_width), interpolation=cv2.INTER_CUBIC)
@@ -54,15 +54,15 @@ class CanvasEnv:
     
     def diff(self):
         # calculate dDifference between two image. you can use different metrics to encourage different characteristic
-        p = self.target[:, :].astype('uint8')
-        q = self.canvas[:, :].astype('uint8')
-        return np.sum((p - q) / 255. ** 2)
+        p = self.target[:, :].astype('float64')
+        q = self.canvas[:, :].astype('float64')
+        return np.sum(((p - q) / 255) ** 2)
         # return np.sum(np.logical_xor(p, q).astype('uint8')) / image_width / image_width
     
     def observation(self):
-        p = (self.target[:, :].astype('float64') / 255).reshape((image_width, image_width, 1))
-        q = (self.canvas[:, :].astype('float64') / 255).reshape((image_width, image_width, 1))
-        T = self.time[:, :].reshape((image_width, image_width, 1))
+        p = (self.target[:, :].astype('float64') / 255)
+        q = (self.canvas[:, :].astype('float64') / 255)
+        T = self.time[:, :]
         ob = np.stack(([p, q, T]), axis=2)
         return ob # np.array(self.target), np.array(self.canvas)
 
@@ -71,7 +71,7 @@ class CanvasEnv:
         x, y = np.split(action, 2)
         g = x * (y.reshape(image_width, 1)).astype('float64')
         color = 255.
-        g = g * color / 4.
+        g = g * color / 32.
         g = np.minimum(g, self.canvas)
         g = np.maximum(g, 255 - self.canvas)
         self.canvas -= g.astype('uint8')

@@ -95,7 +95,7 @@ def train(num_iterations, agent, env, evaluate, bullet):
                     if debug: prRed('Step_{:07d}: mean_reward:{} reward_var:{}'.format(step, np.mean(validate_reward), np.var(validate_reward)))
                     writer.add_scalar('validate/reward', np.mean(validate_reward), step)
                     if args.env == "Paint":
-                        writer.add_image(str(step) + '.png', env.canvas)
+                        writer.add_image(str(step) + '.png', cv2.cvtColor(env.canvas, cv2.COLOR_GRAY2RGB))
             train_time_interval = time.time() - time_stamp
             time_stamp = time.time()
             for i in range(traintimes):
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('--warmup', default=1000, type=int, help='timestep without training but only filling the replay memory')
     parser.add_argument('--discount', default=0.98, type=float, help='')
     parser.add_argument('--batch_size', default=128, type=int, help='minibatch size')
-    parser.add_argument('--rmsize', default=1000000, type=int, help='memory size')
+    parser.add_argument('--rmsize', default=400000, type=int, help='memory size')
     parser.add_argument('--window_length', default=1, type=int, help='')
     parser.add_argument('--tau', default=0.01, type=float, help='moving average for target network')
     parser.add_argument('--action_repeat', default=1, type=int, help='repeat times for each action')
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--save_interval', default=100, type=int, help='how many episodes to save model')
     parser.add_argument('--train_iter', default=2000000, type=int, help='train iters each timestep')
     parser.add_argument('--epsilon', default=10000000, type=int, help='linear decay of exploration policy')
-    parser.add_argument('--traintimes', default=5, type=int, help='train times for each episode')    
+    parser.add_argument('--traintimes', default=10, type=int, help='train times for each episode')    
     parser.add_argument('--resume', default=None, type=str, help='Resuming model path for testing')
     parser.add_argument('--clip_actor_grad', default=None, help='Clip the gradient of the actor by norm.')
     parser.add_argument('--output', default='output', type=str, help='Resuming model path for testing')
@@ -194,7 +194,7 @@ if __name__ == "__main__":
     if args.env == "Paint":
         from env import CanvasEnv
         env = CanvasEnv()
-        writer.add_image('circle.png', env.target)
+        writer.add_image('circle.png', cv2.cvtColor(env.target, cv2.COLOR_GRAY2RGB))
     elif args.env == "KukaGym":
         env = KukaGymEnv(renders=False, isDiscrete=True)
     elif args.env == "LTR":

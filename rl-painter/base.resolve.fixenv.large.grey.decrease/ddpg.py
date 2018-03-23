@@ -21,10 +21,10 @@ def softmax(x):
 class CNN(nn.Module):
     def __init__(self, num_inputs, num_outputs):
         super(CNN, self).__init__()
-        self.conv1 = nn.Conv2d(7, 16, kernel_size=7, stride=2)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=2)
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=2, stride=1)
         self.conv3 = nn.Conv2d(32, 64, kernel_size=2, stride=1)
-        self.fc = nn.Linear(num_inputs * 1600, num_outputs)
+        self.fc = nn.Linear(num_inputs * 64 * 25, num_outputs)
         self.activation = F.relu
         self.init_weights()
 
